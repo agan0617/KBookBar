@@ -489,7 +489,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最下面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.09.26.1';
+const WEB_VERSION = '2026.09.27.1';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1145,6 +1145,18 @@ function adoptNativeLast() {
   if (l && (l.at || 0) >= (x.at || 0)) return;
   LS.set('prog:' + x.bookId, Object.assign({}, l || {}, { ch: x.ch, b: x.b | 0, at: x.at, t: x.t || (l && l.ch === x.ch ? l.t : '') }));
 }
+/* 回到前景、閱讀畫面開著時：畫面停在離開前的位置，但 App 在背景已經念到後面（本機記的是新位置）。
+   朗讀服務已經收掉時收不到 pos 事件，畫面就一直停在舊處，一捲動又把舊位置存回去——這裡把畫面拉到記的位置 */
+function syncReaderToSaved() {
+  if (!R.book || !R.chapters.length || T.playing) return;
+  const p = ownProgress(R.book.id);
+  if (!p || typeof p.ch !== 'number' || !R.chapters[p.ch]) return;
+  const b = p.b | 0;
+  if (p.ch === R.ch && b === currentBlock()) return;
+  T.b = b; T.s = 0; T.chunks = null;
+  if (p.ch !== R.ch) openChapter(p.ch, { block: b });
+  else { R.openBlock = b; scrollToBlock(b); }
+}
 // 打開書的預設位置：這台自己的優先，這台沒讀過才用其他裝置最新的一格，再沒有就用外層那筆（格子掉出清單的舊書）
 function getProgress(id) {
   const own = ownProgress(id); if (own) return own;
@@ -1708,8 +1720,11 @@ function openChapter(i, { block = 0 } = {}) {
   $('#btnNext').textContent = i === R.chapters.length - 1 ? '全書完' : '下一章';
   $$('#tocList li').forEach((li, k) => li.classList.toggle('cur', k === i));
   $('#reader').classList.remove('bars-hidden');
+  // App 在背景念到換章時，這個 rAF 要等回到前景才跑；那時要捲到 App 最後念到的段（R.openBlock 會被朗讀事件更新），不是換章當下的第 0 段
+  R.openBlock = block;
   requestAnimationFrame(() => {
-    if (block > 0 && R.blocks[block]) scrollToBlock(block); else window.scrollTo(0, 0);
+    const blk = R.openBlock;
+    if (blk > 0 && R.blocks[blk]) scrollToBlock(blk); else window.scrollTo(0, 0);
     lastY = scrollY; updateReadBar(); savePos();
   });
 }
@@ -1756,12 +1771,16 @@ function updateReadBar() {
 
 /* 進度：本機馬上記；GitHub 每存一次就是一個 commit，所以只在換章、回書架、離開頁面時存，
    同一章讀很久時最多每 3 分鐘補存一次 */
-let posTimer = null, cloudTimer = null, pendingCloud = null, cloudBusy = false;
+let posTimer = null, cloudTimer = null, pendingCloud = null, cloudBusy = false, lastCloudAt = 0;
 const CLOUD_IDLE_MS = 180000;
 function schedulePos() { clearTimeout(posTimer); posTimer = setTimeout(savePos, 700); }
-function savePos() {
+/* blk 沒給就從畫面算。但 App 在背景念的時候畫面不會跟著捲（smooth 捲動和 rAF 都停了），
+   畫面上還是離開前的舊位置——這時從畫面算會用舊位置蓋掉 App 念到的新位置（暫停那一下最常發生），
+   所以背景只收朗讀事件明確帶來的段落 */
+function savePos(blk) {
   if (!R.book || !R.chapters.length) return;
-  const b = T.playing ? T.b : currentBlock();
+  if (blk == null && NATIVE && document.visibilityState === 'hidden') return;
+  const b = blk != null ? blk : T.playing ? T.b : currentBlock();
   const n = R.chapters.length;
   const p = { ch: R.ch, b, pct: Math.min(1, (R.ch + (R.blocks.length ? (b + 1) / R.blocks.length : 1)) / n), t: (R.chapters[R.ch] && R.chapters[R.ch].title) || '', at: Date.now() };
   LS.set('prog:' + R.book.id, p);
@@ -1770,6 +1789,11 @@ function savePos() {
   if (saved && saved.ch === p.ch && saved.b === p.b) { if (pendingCloud && pendingCloud.id === R.book.id) pendingCloud = null; return; }
   const chChanged = !saved || saved.ch !== p.ch;
   pendingCloud = { id: R.book.id, p };
+  // 背景時計時器被凍住，等不到下面的 setTimeout：換章或離上次推超過 3 分鐘就當場推
+  if (document.visibilityState === 'hidden') {
+    if (chChanged || Date.now() - lastCloudAt > CLOUD_IDLE_MS) flushCloud();
+    return;
+  }
   if (chChanged) { clearTimeout(cloudTimer); cloudTimer = setTimeout(flushCloud, 1500); }
   else if (!cloudTimer) cloudTimer = setTimeout(flushCloud, CLOUD_IDLE_MS);
 }
@@ -1778,7 +1802,7 @@ async function flushCloud(keepalive) {
   if (!pendingCloud || !canWrite()) return;
   if (cloudBusy) { cloudTimer = setTimeout(flushCloud, 1500); return; }
   const x = pendingCloud; pendingCloud = null; cloudBusy = true;
-  try { await GH.saveProgress(x.id, x.p, keepalive === true); }
+  try { await GH.saveProgress(x.id, x.p, keepalive === true); lastCloudAt = Date.now(); }
   catch { if (!pendingCloud) pendingCloud = x; cloudTimer = setTimeout(flushCloud, 30000); }
   finally { cloudBusy = false; }
 }
@@ -2075,10 +2099,13 @@ window.KBookNativeEvent = e => {
   if (!T.sleepTimer) { T.sleepAt = e.sleepAt || 0; T.stopAtChEnd = !!e.stopAtChEnd; }
   if (typeof e.ch === 'number' && R.chapters[e.ch]) {
     if (e.ch !== R.ch) openChapter(e.ch, { block: e.b });
-    T.b = e.b;
+    T.b = e.b; R.openBlock = e.b;
     if (T.playing) markSpeaking(e.b);
-    // 直接存，不用 schedulePos 的 0.7 秒延遲：App 在背景時計時器被節流，每段都重設計時會一直存不到
-    savePos();
+    // 直接存，不用 schedulePos 的 0.7 秒延遲：App 在背景時計時器被節流，每段都重設計時會一直存不到。
+    // 段落一定用 App 帶來的 e.b：暫停後 T.playing 是 false，savePos() 會改從畫面算，背景時畫面是舊位置
+    savePos(e.b);
+    // 在背景暫停＝告一段落，順手推上雲端（背景的計時器不會跑）
+    if (!T.playing && document.visibilityState === 'hidden') flushCloud();
   }
   if (e.type === 'end') { clearSpeaking(); toast('全書念完了'); }
   if (e.type === 'sleep') { T.sleepAt = 0; T.stopAtChEnd = false; $('#sleepSel').value = '0'; toast('時間到，已停止朗讀'); }
@@ -2513,9 +2540,14 @@ function wire() {
     if (S.mode === 'error' && ghConf().token && !cloudBusy) { lastRefresh = Date.now(); connect(false); }
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') { savePos(); flushCloud(true); }
+    // 這時 visibilityState 已經是 hidden，段落要明講（savePos 不帶參數在背景會略過）
+    if (document.visibilityState === 'hidden') { savePos(T.playing ? T.b : currentBlock()); flushCloud(true); }
     else {
-      if (NATIVE) { adoptNativeLast(); if (R.view === 'reader') window.KBookNativeEvent(Object.assign(nativeState(), { type: 'pos' })); else renderLibrary(); }
+      if (NATIVE) {
+        adoptNativeLast();
+        if (R.view === 'reader') { window.KBookNativeEvent(Object.assign(nativeState(), { type: 'pos' })); syncReaderToSaved(); }
+        else renderLibrary();
+      }
       else if (T.playing) { acquireWake(); if (synth && !synth.speaking) restartSpeech(); }
       // 切回來時抓一次別台裝置的最新書架與進度
       if (Date.now() - lastRefresh > 30000 && !cloudBusy) {
@@ -2526,7 +2558,7 @@ function wire() {
       if (R.view === 'library' && $('#modal').hidden) renderLibrary();
     }
   });
-  window.addEventListener('pagehide', () => { savePos(); flushCloud(true); });
+  window.addEventListener('pagehide', () => { if (document.visibilityState !== 'hidden') savePos(); flushCloud(true); });
 }
 
 /* ───────── 啟動 ───────── */
