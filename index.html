@@ -489,7 +489,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最下面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.09.29.1';
+const WEB_VERSION = '2026.09.30.1';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -674,6 +674,7 @@ pronounce:
 - **念錯字了**：選取念錯的詞，下方會出現「修正讀音」，輸入同音字（例如「重新」寫成「蟲新」），可以先**試聽**，再選「這本書」或「所有書」。畫面上照樣是原文，只有朗讀會換；正在念的話，存好會從這一段重新念。只選一個字會提醒你：那個字在書裡每次出現都會被換掉，最好選整個詞。
 - **讀音字典**：朗讀設定裡的「讀音字典…」可以一次看、一次改所有條目；書卡「⋯」→ 編輯也有這本書的讀音欄。書檔 frontmatter 的「pronounce:」也算，同一個詞以網頁上改的為準。字典存在書架上，每台裝置都一樣。
 - **場景分隔**：整段只有符號的（例如「＊＊＊」）不念，換成停久一點。
+- **表格、一行一行的段落**：表格一列的欄位之間、段落裡的換行處（詩、歌詞、地址）會停一下；中文旁邊的半形標點（, . ? ! : ;）當全形念，中文字之間多出來的空格不算。
 - **符號和數字**：破折號、刪節號念成停頓；「2.5×」念「2.5 倍」、「3×4」念「3 乘 4」、「3～5」念「3 到 5」；「II」「IV」這類羅馬數字念成中文數字；「網頁／App」的斜線念成停頓。
 - **括號裡的補充**：朗讀設定可以選照念、只跳過英文注解（例如「伺服器（server）」不念括號，預設）、或括號都不念。
 - 朗讀時會盡量讓螢幕保持亮著（App 1.6 以上念的時候螢幕不會自動鎖定，暫停或停止後照手機設定的時間鎖定）。切到別的 App 或鎖定螢幕時，K書吧 會設法讓朗讀繼續，通知欄和鎖定畫面也有播放、暫停、上一段／下一段的按鈕；不過有些手機的瀏覽器還是會把朗讀停掉，回到 K書吧 就會接著念。
@@ -2030,6 +2031,8 @@ const gapMs = ms => Math.round(ms / Math.sqrt(Math.max(1, prefs.rate)));
 
 /* 符號與數字整理成念得出來的樣子（只影響朗讀，畫面不變） */
 const CJK = '\\u3400-\\u9fff\\uf900-\\ufaff';
+const CJKX = CJK + '\\u3000-\\u303f\\uff00-\\uffef'; // 中文字加上全形標點、括號
+const HALF = { ',': '，', '.': '。', '?': '？', '!': '！', ':': '：', ';': '；' };
 const ROMAN = { II: '二', III: '三', IV: '四', VI: '六', VII: '七', VIII: '八', IX: '九' };
 const ROMAN_U = 'ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ', ROMAN_ZH = '一二三四五六七八九十';
 const SPK = {
@@ -2041,14 +2044,18 @@ const SPK = {
   fold: /(\d)\s*[×✕xX](?![A-Za-z0-9])/g,      // 2.5× → 2.5倍
   roman: /(?<![A-Za-z])(VIII|VII|III|IX|IV|VI|II)(?![A-Za-z])/g,
   romanU: /[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]/g,
-  dash: /[—―─]+|…+|\.{3,}|\s\|\s/g,          // 破折號、刪節號 → 停一下
+  dash: /[—―─]+|…+|\.{2,}|\s\|\s/g,          // 破折號、刪節號（「..」也算）→ 停一下
   slashL: new RegExp(`(?<=[${CJK}])\\s*[/／]\\s*`, 'g'),
   slashR: new RegExp(`\\s*[/／]\\s*(?=[${CJK}])`, 'g'),
   tilde: /[~～]/g,
   // 對話前後留個空：他說「……」他笑了 → 他說，「……」，他笑了
   qOpen: new RegExp(`(?<=[${CJK}A-Za-z0-9])([「『])`, 'g'),
   qClose: new RegExp(`([」』])(?=[${CJK}A-Za-z0-9])`, 'g'),
-  dupComma: /[，,]\s*(?=[，。！？、；：])/g
+  dupComma: /[，,]\s*(?=[，。！？、；：])/g,
+  // 中文旁邊的半形標點換成全形：引擎對中文裡的「.」「:」「;」不一定會停；後面接英數的（3.5、A:B）不動
+  halfPunct: new RegExp(`(?<=[${CJK}」』）】])([,.?!:;])(?![A-Za-z0-9])`, 'g'),
+  // 中文字之間、全形標點旁邊的空白拿掉（來源檔多出來的空格會讓引擎多停一下或斷錯詞）；中英文之間的留著
+  cjkSpace: new RegExp(`(?<=[${CJKX}])\\s+(?=[${CJKX}])`, 'g')
 };
 function speakable(s) {
   if (!s) return s;
@@ -2058,11 +2065,22 @@ function speakable(s) {
   return s.replace(SPK.range, '$1到').replace(SPK.times, '$1乘').replace(SPK.fold, '$1倍')
     .replace(SPK.roman, m => ROMAN[m]).replace(SPK.romanU, c => ROMAN_ZH[ROMAN_U.indexOf(c)])
     .replace(SPK.dash, '，').replace(SPK.slashL, '、').replace(SPK.slashR, '、').replace(SPK.tilde, '')
-    .replace(SPK.qOpen, '，$1').replace(SPK.qClose, '$1，').replace(SPK.dupComma, '')
-    .replace(/^[，\s]+/, '').replace(/\s+/g, ' ').trim();
+    .replace(SPK.halfPunct, c => HALF[c])
+    .replace(SPK.qOpen, '，$1').replace(SPK.qClose, '$1，').replace(SPK.cjkSpace, '').replace(SPK.dupComma, '')
+    .replace(/^[，、\s]+/, '').replace(/[，、\s]+$/, '').replace(/\s+/g, ' ').trim();
+}
+/* 段落的文字：textContent 會把 <br> 前後、表格一列的儲存格直接黏在一起（詩、歌詞、地址一行一行的段落
+   就變成一口氣念完，表格一列念成「名稱數量備註」）。換行和儲存格之間改成逗號，念的時候停一下 */
+function nodeText(n) {
+  if (n.nodeType === 3) return n.nodeValue;
+  if (n.nodeType !== 1) return '';
+  if (n.tagName === 'BR') return '，';
+  let s = '';
+  for (const c of n.childNodes) s += nodeText(c);
+  return n.tagName === 'TD' || n.tagName === 'TH' ? s.trim() + '，' : s;
 }
 // 念出來的文字：去掉網址、出處編號 → 讀音字典 → 符號整理
-const rawText = el => el.textContent.replace(/https?:\/\/\S+/g, ' ').replace(CITE_RE, '').replace(/\s+/g, ' ').trim();
+const rawText = el => nodeText(el).replace(/https?:\/\/\S+/g, ' ').replace(CITE_RE, '').replace(/\s+/g, ' ').trim();
 const speechText = (el, silent) => silent || isBreak(el) ? '' : speakable(R.pron ? R.pron(rawText(el)) : rawText(el));
 
 function chapterBlocks(c) {
