@@ -70,6 +70,11 @@ svg{display:block}
 .icon svg{width:22px;height:22px}
 .icon.on{color:var(--accent);background:var(--accent-soft)}
 .icon.aa{font-family:var(--f-display);font-weight:600;font-size:18px;letter-spacing:-.02em}
+/* 語速快切鈕：顯示現在幾倍，按一下在 1× 和 2× 之間切；不是 1× 時亮起 */
+.icon.rate{width:auto;min-width:40px;padding:0 6px;font-family:var(--f-display);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ttsbar .icon.rate{height:36px;min-width:36px;padding:0 4px;font-size:13px}
+/* 窄螢幕（375px 的手機）面板那一排放不下：按鈕縮一點，段數那行不換行 */
+@media (max-width:420px){.p-row{gap:3px}.p-row .icon{width:38px}.p-row .p-play{width:48px;height:48px}.p-row .icon.rate{min-width:36px;padding:0 4px;font-size:13px}.p-status{padding-inline:4px}}
 .icon:disabled{opacity:.3;cursor:default}
 .icon:disabled:hover{background:transparent}
 /* 頂端列有七個鈕，窄手機上縮一點才擠得下書名 */
@@ -261,7 +266,7 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
 .p-play svg{width:24px;height:24px}
 .p-status{flex:1;min-width:0;padding-inline:8px;line-height:1.35}
 .p-status b{display:block;font-family:var(--f-display);font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.p-status span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.p-status span{display:block;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p-opts{display:grid;grid-template-columns:1fr 2fr 1fr;gap:10px;padding-top:10px;margin-top:10px;border-top:1px solid var(--line)}
 .p-opts label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
 .p-opts select{width:100%}
@@ -429,6 +434,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
       <button class="p-play" type="button" id="pPlay" aria-label="播放"></button>
       <button class="icon" type="button" id="pNext" aria-label="下一段"></button>
       <div class="p-status"><b id="pTitle"></b><span id="pSub"></span></div>
+      <button class="icon rate" type="button" id="pRate" aria-label="切換語速" title="按一下在 1× 和 2× 之間切換；其他速度到設定裡選"></button>
       <button class="icon" type="button" id="pTune" aria-label="朗讀設定" aria-expanded="false"></button>
       <button class="icon" type="button" id="pClose" aria-label="收起朗讀面板（朗讀會繼續）" title="收起面板，朗讀會繼續；按下方進度列左邊的設定鈕再打開"></button>
     </div>
@@ -472,6 +478,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
       <input type="range" id="seekRange" min="0" max="0" step="1" value="0" aria-label="這一章的朗讀進度">
       <span class="pos" id="seekPos"></span>
     </div>
+    <button class="icon rate" type="button" id="btnRate" aria-label="切換語速" title="按一下在 1× 和 2× 之間切換"></button>
     <label class="vol" title="音量"><span id="volIcon"></span><input type="range" id="volRange2" min="0" max="100" step="5" aria-label="朗讀音量"></label>
   </div>
 </div>
@@ -489,7 +496,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最下面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.09.30.1';
+const WEB_VERSION = '2026.09.30.2';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -667,7 +674,7 @@ pronounce:
 
 - **正在念的時候點任何一段**，就跳到那一段接著念；沒在念時點段落不會有反應，要開始念請點耳機。
 - 播放面板右邊的 **✕** 只是把面板收起來，朗讀會繼續；上方的耳機會亮著，點它就停，點進度列左邊的設定鈕再把面板叫出來。
-- 可以調**速度**、**音量**、換**語音**，這些設定每台裝置各自記住，下次打開還在。iPhone／iPad 的 Safari 不理會網頁設的朗讀音量，要用手機的音量鍵調。用的是瀏覽器或系統內建的語音，Windows 上建議選名稱有「Chinese (Traditional, Taiwan)」的那個。
+- 可以調**速度**、**音量**、換**語音**，這些設定每台裝置各自記住，下次打開還在。播放面板和下方進度列上有個寫著「1×」的鈕，按一下就切到 2×、再按切回 1×，不用進設定；其他速度（0.25×～4×）到設定裡選。iPhone／iPad 的 Safari 不理會網頁設的朗讀音量，要用手機的音量鍵調。用的是瀏覽器或系統內建的語音，Windows 上建議選名稱有「Chinese (Traditional, Taiwan)」的那個。
 - **定時停止**：15 到 60 分鐘，或念完這一章就停，適合睡前聽。選過的時間會記住，下次開始朗讀時自動套用。
 - 朗讀會**跳過程式碼區塊**，以及標題叫「參考資料」「參考文獻」「References」這類的整節（到下一個同級標題為止），正文裡的網址和 [4] 這種出處編號也不念；畫面上照樣看得到。
 - 念到**章名、小節標題**時，前後會各停一下、念得慢一點，聽得出那是標題不是內文；換段也會停一下，換章停最久，對話前後會留個空（App 要 1.5 以上，1.4 只有標題停頓）。語速調快時停頓跟著縮短。
@@ -2236,6 +2243,18 @@ function restartSpeech() {
   synth.cancel();
   setTimeout(() => { if (g === T.gen && T.playing) speakNext(g); }, 90);
 }
+/* 語速：設定裡的下拉、面板和進度列上的快切鈕都走這裡。改了馬上套用（App 由服務重排，瀏覽器從這一段重念） */
+function renderRate() {
+  const t = prefs.rate + '×';
+  $('#rateSel').value = String(prefs.rate);
+  for (const id of ['#pRate', '#btnRate']) { const b = $(id); b.textContent = t; b.classList.toggle('on', prefs.rate !== 1); }
+}
+function setRate(r) {
+  r = Math.min(4, Math.max(0.25, Math.round(r * 4) / 4));
+  if (r === prefs.rate) { renderRate(); return; }
+  prefs.rate = r; savePrefs(); renderRate();
+  if (NATIVE) NATIVE.setRate(prefs.rate); else if (T.playing) restartSpeech();
+}
 function speakNext(g, cont) {
   if (g !== T.gen || !T.playing) return;
   for (;;) {
@@ -2419,7 +2438,7 @@ function wire() {
   $('#sortSel').value = prefs.sort;
   // 速度每 0.25 一檔；舊版存的 0.9／1.15／1.3 選單裡已經沒有，對到最近的一檔
   prefs.rate = Math.min(4, Math.max(0.25, Math.round(prefs.rate * 4) / 4));
-  $('#rateSel').value = String(prefs.rate);
+  renderRate();
   if (!canSpeak()) $('#btnTts').hidden = true;
 
   // 書架
@@ -2509,7 +2528,9 @@ function wire() {
   $('#pNext').onclick = () => ttsJump(1);
   $('#pClose').onclick = hidePlayer;
   $('#pTune').onclick = () => { const o = $('#pOpts'); o.hidden = !o.hidden; $('#pTune').setAttribute('aria-expanded', String(!o.hidden)); };
-  $('#rateSel').onchange = e => { prefs.rate = +e.target.value; savePrefs(); if (NATIVE) NATIVE.setRate(prefs.rate); else if (T.playing) restartSpeech(); };
+  $('#rateSel').onchange = e => setRate(+e.target.value);
+  // 面板和進度列上的語速快切鈕：1× ↔ 2×；現在是別的速度（1.5× 之類）就先到 2×
+  $('#pRate').onclick = $('#btnRate').onclick = () => setRate(prefs.rate === 2 ? 1 : 2);
   $('#voiceSel').onchange = e => { prefs.voice = e.target.value; savePrefs(); if (NATIVE) NATIVE.setVoice(prefs.voice); else if (T.playing) restartSpeech(); };
   $('#sleepSel').onchange = e => { prefs.sleep = e.target.value; savePrefs(); setSleep(e.target.value); };
   $('#parenSel').value = prefs.paren;
