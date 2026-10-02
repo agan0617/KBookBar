@@ -58,7 +58,7 @@
 | App | 存在 repo 的哪裡 |
 |---|---|
 | [K書吧](https://github.com/agan0617/KBookBar) | `saves/kbookbar/`（書目、書檔、閱讀進度） |
-| [魔塔](https://github.com/agan0617/MagicTower) | `saves/magictower.json` |
+| [魔塔](https://github.com/agan0617/MagicTower) | `saves/magictower/`（存檔） |
 
 已經在其中一個 App 連上的話，其他 App 連線時貼同一支 token、repo 填同一個就好。
 
