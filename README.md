@@ -6,7 +6,7 @@
 
 <img src="docs/screenshot.png" alt="screenshot">
 
-- 書架資料（書目、書檔、閱讀進度）**不在這個 repo**，而在使用者自己的**私有 repo**（作者的是 `agan0617/CloudSave`，2026-10-02 前叫 BookShelf；跟其他自用 App 的雲端存檔共用）
+- 書架資料（書目、書檔、閱讀進度）**不在這個 repo**，而在使用者自己的**私有 repo**（作者的是 `agan0617/CloudSave`，2026-10-02 前叫 BookShelf；跟其他自用 App 的雲端存檔共用，K書吧的資料都在 `saves/kbookbar/` 底下）
 - 頁面用 GitHub REST API 讀寫那個 repo，需要的 token 由使用者在每台裝置貼一次，只存在那台裝置的 `localStorage`
 - 這個 repo 是公開的（免費方案的 Pages 只能發佈公開 repo），但裡面只有程式、沒有書
 
@@ -21,7 +21,7 @@
 3. 勾 **Add a README file**，讓 repo 一開始就有一個 commit（全空的 repo 沒有分支，寫不進去）
 4. Create repository
 
-裡面不用先放任何東西。`library.json`（書目）、`books/`（書檔）、`progress.json`（閱讀進度）會在你第一次匯入書、第一次存進度時自動建立。
+裡面不用先放任何東西。`saves/kbookbar/` 底下的 `library.json`（書目）、`books/`（書檔）、`progress.json`（閱讀進度）會在你第一次匯入書、第一次存進度時自動建立。
 
 ### 2. 產生 token
 
@@ -80,7 +80,7 @@
 
 ## 書架 repo 的資料格式
 
-一般用頁面匯入就好，不用手動改。要自己寫程式讀寫時參考：
+一般用頁面匯入就好，不用手動改。要自己寫程式讀寫時參考（路徑都相對於 repo 的 `saves/kbookbar/`，書目的 `file` 也是）：
 
 | 檔案 | 內容 |
 |---|---|

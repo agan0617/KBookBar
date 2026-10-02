@@ -496,7 +496,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最下面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.02.2';
+const WEB_VERSION = '2026.10.02.3';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -601,7 +601,7 @@ K書吧讀的是純文字書檔：**.md**（Markdown）或 **.txt**。叫 AI 寫
 - **讀音**：frontmatter 裡的「pronounce:」列出朗讀容易念錯的詞，格式見〈給 AI 的格式〉。只影響朗讀，畫面上照樣是原文。
 - 也可以直接請 Claude 把寫好的書放上書架。
 
-書在兩個地方各有一份：**每台裝置的瀏覽器裡**一份，**你的私有 GitHub repo** CloudSave 一份。每次打開K書吧，會先擺出這台裝置上的書，再跟 GitHub 比對：有新書就下載、改版就更新、別台裝置刪掉的就移除。所以沒網路也能讀已經下載的書，打開也比較快。
+書在兩個地方各有一份：**每台裝置的瀏覽器裡**一份，**你的私有 GitHub repo** CloudSave 的 saves/kbookbar/ 底下一份。每次打開K書吧，會先擺出這台裝置上的書，再跟 GitHub 比對：有新書就下載、改版就更新、別台裝置刪掉的就移除。所以沒網路也能讀已經下載的書，打開也比較快。
 
 **離線閱讀**：頁面本身也會存一份在裝置上（第一次上網打開時就存好），之後在沒有網路的地方——飛機上、捷運裡——直接打開K書吧或 App 一樣能讀。右上角會顯示「離線・本機書架」，這時不能匯入或刪書；讀到哪先記在本機，網路回來會自動連上並把進度補傳。手機瀏覽器可以用「加到主畫面」把K書吧裝成 App 圖示，打開更快。
 
@@ -871,7 +871,7 @@ function sanitize(html) {
   return tpl.innerHTML;
 }
 
-/* ───────── 儲存：私有 GitHub repo（library.json 書目、books/ 書檔、progress.json 進度） ─────────
+/* ───────── 儲存：私有 GitHub repo 的 saves/kbookbar/ 底下（library.json 書目、books/ 書檔、progress.json 進度） ─────────
    token 由使用者在每台裝置貼一次，只存在這台裝置的 localStorage。 */
 const S = { mode: 'init', backend: null, books: [], progress: {}, loaded: false, err: '' };
 const textCache = new Map();
@@ -908,6 +908,9 @@ const Store = {
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch {}
 
 const GH_DEFAULT = { owner: 'agan0617', repo: 'CloudSave', branch: '', token: '' };
+// 書架資料在 repo 的這個目錄底下（repo 跟其他 App 的雲端存檔共用，每個 App 各用 saves/ 底下自己的地方）；
+// 書目裡的 file 是相對於這裡的路徑
+const SHELF_DIR = 'saves/kbookbar/';
 const ghConf = () => {
   const c = Object.assign({}, GH_DEFAULT, LS.get('gh', {}));
   // 2026-10-02 書架 repo 由 BookShelf 改名為 CloudSave（跟其他 App 的雲端存檔共用）
@@ -947,23 +950,23 @@ const GH = {
   ref() { return 'ref=' + encodeURIComponent(this.conf.branch); },
   async getJson(path) {
     try {
-      const j = await (await this.api(`contents/${encPath(path)}?${this.ref()}`)).json();
+      const j = await (await this.api(`contents/${encPath(SHELF_DIR + path)}?${this.ref()}`)).json();
       return { data: JSON.parse(b64dec(j.content)), sha: j.sha };
     } catch (e) { if (e.status === 404) return null; throw e; }
   },
   async sha(path) {
-    try { return (await (await this.api(`contents/${encPath(path)}?${this.ref()}`)).json()).sha; }
+    try { return (await (await this.api(`contents/${encPath(SHELF_DIR + path)}?${this.ref()}`)).json()).sha; }
     catch (e) { if (e.status === 404) return null; throw e; }
   },
   async put(path, text, sha, message, keepalive) {
     const body = { message, content: b64enc(text), branch: this.conf.branch };
     if (sha) body.sha = sha;
-    const r = await this.api(`contents/${encPath(path)}`, { method: 'PUT', body: JSON.stringify(body), keepalive: !!keepalive });
+    const r = await this.api(`contents/${encPath(SHELF_DIR + path)}`, { method: 'PUT', body: JSON.stringify(body), keepalive: !!keepalive });
     return (await r.json()).content.sha;
   },
   async del(path, message) {
     const sha = await this.sha(path); if (!sha) return;
-    await this.api(`contents/${encPath(path)}`, { method: 'DELETE', body: JSON.stringify({ message, sha, branch: this.conf.branch }) });
+    await this.api(`contents/${encPath(SHELF_DIR + path)}`, { method: 'DELETE', body: JSON.stringify({ message, sha, branch: this.conf.branch }) });
   },
   setLocal(kind, data, sha, fromCache) {
     if (kind === 'lib') {
@@ -1011,7 +1014,25 @@ const GH = {
     const repo = await (await this.api('')).json();
     if (!this.conf.branch) this.conf.branch = repo.default_branch || 'main';
     await this.refresh();
+    await this.adoptStrayProgress().catch(() => {});
     return !(repo.permissions && repo.permissions.push === false);
+  },
+  // 2026-10-02 書架搬進 saves/kbookbar/ 時還開著、沒重新載入的舊版頁面（例如背景裡的 App），會把進度寫回
+  // repo 根目錄的 progress.json：有的話併進現在的進度，再把根目錄那份刪掉
+  async adoptStrayProgress() {
+    let j;
+    try { j = await (await this.api(`contents/progress.json?${this.ref()}`)).json(); }
+    catch (e) { if (e.status === 404) return; throw e; }
+    const stray = JSON.parse(b64dec(j.content));
+    await this.mutate('prog', cur => {
+      const pick = new Map();
+      [...slotsOf(cur), ...slotsOf(stray)].forEach(x => {
+        const k = x.dev + '|' + x.id + '|' + x.ch, y = pick.get(k);
+        if (!y || (y.at || 0) < x.at) pick.set(k, x);
+      });
+      return withSlots(Object.assign({}, stray, cur), [...pick.values()].sort(byAt).slice(0, SLOTS));
+    }, '進度：併入舊版頁面寫在根目錄的進度');
+    await this.api('contents/progress.json', { method: 'DELETE', body: JSON.stringify({ message: '移除根目錄的舊進度檔（已併進 saves/kbookbar/）', sha: j.sha, branch: this.conf.branch }) });
   },
   async add(meta, text) {
     const id = newId(), file = titleFile(meta.title, meta.author, meta.format, id, this.lib.books), now = Date.now();
@@ -1065,7 +1086,7 @@ const GH = {
       throw new Error('這本書還沒下載到這台裝置，連上 GitHub 後再開');
     }
     let r;
-    try { r = await this.api(`contents/${encPath(book.file || idFile(book.id, book.format))}?${this.ref()}`, { headers: { Accept: 'application/vnd.github.raw+json' } }); }
+    try { r = await this.api(`contents/${encPath(SHELF_DIR + (book.file || idFile(book.id, book.format)))}?${this.ref()}`, { headers: { Accept: 'application/vnd.github.raw+json' } }); }
     catch (e) { if (c && typeof c.text === 'string') { textCache.set(book.id, c.text); return c.text; } throw e; }
     const t = await r.text();
     textCache.set(book.id, t); Store.set('text:' + book.id, { text: t, ver: book.updatedAt });
