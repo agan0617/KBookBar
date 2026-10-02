@@ -6,9 +6,8 @@
 
 <img src="docs/screenshot.png" alt="screenshot">
 
-- 書架資料（書目、書檔、閱讀進度）**不在這個 repo**，而在使用者自己的**私有 repo**（作者的是 `agan0617/CloudSave`，2026-10-02 前叫 BookShelf；跟其他自用 App 的雲端存檔共用，K書吧的資料都在 `saves/kbookbar/` 底下）
+- 書架資料（書目、書檔、閱讀進度）**不在這個 repo**，而在使用者自己的**私有 repo**（作者的是 `agan0617/CloudSave`）
 - 頁面用 GitHub REST API 讀寫那個 repo，需要的 token 由使用者在每台裝置貼一次，只存在那台裝置的 `localStorage`
-- 這個 repo 是公開的（免費方案的 Pages 只能發佈公開 repo），但裡面只有程式、沒有書
 
 ## 用你自己的書架
 

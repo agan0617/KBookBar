@@ -496,7 +496,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最下面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.02.3';
+const WEB_VERSION = '2026.10.02.4';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -615,7 +615,7 @@ K書吧讀的是純文字書檔：**.md**（Markdown）或 **.txt**。叫 AI 寫
 每台裝置（手機、電腦各自的瀏覽器）第一次打開K書吧時，要貼一次 GitHub token：
 
 1. 到 GitHub 的 Settings → Developer settings → Personal access tokens → **Fine-grained tokens**，按 Generate new token。
-2. **Repository access** 選 Only select repositories，只勾 **CloudSave**（2026-10-02 前叫 BookShelf）。
+2. **Repository access** 選 Only select repositories，只勾 **CloudSave**。
 3. **Permissions** 裡的 **Contents** 設成 **Read and write**，其他都不用開。
 4. 產生後複製 token，回K書吧按右上角的連線狀態，貼上後按「連線」。
 
