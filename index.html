@@ -496,7 +496,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最下面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.09.30.2';
+const WEB_VERSION = '2026.10.02.1';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -2584,7 +2584,15 @@ function wire() {
     else {
       if (NATIVE) {
         adoptNativeLast();
-        if (R.view === 'reader') { window.KBookNativeEvent(Object.assign(nativeState(), { type: 'pos' })); syncReaderToSaved(); }
+        if (R.view === 'reader') {
+          // 只有還在念才拿 App 的段落：暫停中的朗讀服務還留著暫停那一刻的位置，暫停後自己往下讀了的話那是舊位置，
+          // 當成 pos 事件會用它蓋掉本機進度（而且 at 是現在）再把畫面拉回去。暫停期間 App 有沒有念得更後面，
+          // adoptNativeLast 已經照時間比過，syncReaderToSaved 會處理
+          const st = nativeState();
+          if (st.playing) window.KBookNativeEvent(Object.assign(st, { type: 'pos' }));
+          else if (T.playing) { T.playing = false; updatePlayer(); }
+          syncReaderToSaved();
+        }
         else renderLibrary();
       }
       else if (T.playing) { acquireWake(); if (synth && !synth.speaking) restartSpeech(); }
