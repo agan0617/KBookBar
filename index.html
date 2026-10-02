@@ -496,7 +496,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最下面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.02.1';
+const WEB_VERSION = '2026.10.02.2';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -567,7 +567,7 @@ function errMsg(e) {
     unsupported_type: '只收 .md 或 .txt 純文字檔',
     gh_401: 'GitHub token 無效或已過期，請重貼一次',
     gh_403: 'token 沒有這個權限（Contents 要 Read and write），或 GitHub 暫時限流',
-    gh_404: '找不到 BookShelf repo，或 token 沒有授權這個 repo',
+    gh_404: '找不到書架 repo，或 token 沒有授權這個 repo',
     gh_409: '書架剛被別台裝置改過，重新整理後再試',
     gh_net: '連不上 GitHub，檢查一下網路'
   };
@@ -601,7 +601,7 @@ K書吧讀的是純文字書檔：**.md**（Markdown）或 **.txt**。叫 AI 寫
 - **讀音**：frontmatter 裡的「pronounce:」列出朗讀容易念錯的詞，格式見〈給 AI 的格式〉。只影響朗讀，畫面上照樣是原文。
 - 也可以直接請 Claude 把寫好的書放上書架。
 
-書在兩個地方各有一份：**每台裝置的瀏覽器裡**一份，**你的私有 GitHub repo** BookShelf 一份。每次打開K書吧，會先擺出這台裝置上的書，再跟 GitHub 比對：有新書就下載、改版就更新、別台裝置刪掉的就移除。所以沒網路也能讀已經下載的書，打開也比較快。
+書在兩個地方各有一份：**每台裝置的瀏覽器裡**一份，**你的私有 GitHub repo** CloudSave 一份。每次打開K書吧，會先擺出這台裝置上的書，再跟 GitHub 比對：有新書就下載、改版就更新、別台裝置刪掉的就移除。所以沒網路也能讀已經下載的書，打開也比較快。
 
 **離線閱讀**：頁面本身也會存一份在裝置上（第一次上網打開時就存好），之後在沒有網路的地方——飛機上、捷運裡——直接打開K書吧或 App 一樣能讀。右上角會顯示「離線・本機書架」，這時不能匯入或刪書；讀到哪先記在本機，網路回來會自動連上並把進度補傳。手機瀏覽器可以用「加到主畫面」把K書吧裝成 App 圖示，打開更快。
 
@@ -615,7 +615,7 @@ K書吧讀的是純文字書檔：**.md**（Markdown）或 **.txt**。叫 AI 寫
 每台裝置（手機、電腦各自的瀏覽器）第一次打開K書吧時，要貼一次 GitHub token：
 
 1. 到 GitHub 的 Settings → Developer settings → Personal access tokens → **Fine-grained tokens**，按 Generate new token。
-2. **Repository access** 選 Only select repositories，只勾 **BookShelf**。
+2. **Repository access** 選 Only select repositories，只勾 **CloudSave**（2026-10-02 前叫 BookShelf）。
 3. **Permissions** 裡的 **Contents** 設成 **Read and write**，其他都不用開。
 4. 產生後複製 token，回K書吧按右上角的連線狀態，貼上後按「連線」。
 
@@ -907,8 +907,13 @@ const Store = {
 };
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch {}
 
-const GH_DEFAULT = { owner: 'agan0617', repo: 'BookShelf', branch: '', token: '' };
-const ghConf = () => Object.assign({}, GH_DEFAULT, LS.get('gh', {}));
+const GH_DEFAULT = { owner: 'agan0617', repo: 'CloudSave', branch: '', token: '' };
+const ghConf = () => {
+  const c = Object.assign({}, GH_DEFAULT, LS.get('gh', {}));
+  // 2026-10-02 書架 repo 由 BookShelf 改名為 CloudSave（跟其他 App 的雲端存檔共用）
+  if (c.owner === 'agan0617' && c.repo === 'BookShelf') c.repo = 'CloudSave';
+  return c;
+};
 const b64enc = s => { const u = new TextEncoder().encode(s); let bin = ''; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(bin); };
 const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(String(s).replace(/\s/g, '')), c => c.charCodeAt(0)));
 const encPath = p => p.split('/').map(encodeURIComponent).join('/');

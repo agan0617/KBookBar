@@ -6,7 +6,7 @@
 
 <img src="docs/screenshot.png" alt="screenshot">
 
-- 書架資料（書目、書檔、閱讀進度）**不在這個 repo**，而在使用者自己的**私有 repo**（作者的是 `agan0617/BookShelf`）
+- 書架資料（書目、書檔、閱讀進度）**不在這個 repo**，而在使用者自己的**私有 repo**（作者的是 `agan0617/CloudSave`，2026-10-02 前叫 BookShelf；跟其他自用 App 的雲端存檔共用）
 - 頁面用 GitHub REST API 讀寫那個 repo，需要的 token 由使用者在每台裝置貼一次，只存在那台裝置的 `localStorage`
 - 這個 repo 是公開的（免費方案的 Pages 只能發佈公開 repo），但裡面只有程式、沒有書
 
@@ -17,7 +17,7 @@
 ### 1. 建書架 repo
 
 1. GitHub 右上角「＋」→ **New repository**
-2. Repository name 隨你取（例如 `BookShelf`），選 **Private**
+2. Repository name 隨你取（例如 `CloudSave`），選 **Private**
 3. 勾 **Add a README file**，讓 repo 一開始就有一個 commit（全空的 repo 沒有分支，寫不進去）
 4. Create repository
 
@@ -36,7 +36,7 @@
 1. 打開 https://agan0617.github.io/KBookBar/
 2. 按右上角的連線狀態（或書架上的「連上書架」）
 3. 貼上 token
-4. 展開「**換 repo（一般不用動）**」，把 `agan0617/BookShelf` 改成 **`你的帳號/你的 repo 名`**
+4. 展開「**換 repo（一般不用動）**」，把 `agan0617/CloudSave` 改成 **`你的帳號/你的 repo 名`**
 5. 按「連線」，看到「已連上 你的帳號/你的 repo 名」就成功了
 
 **每台裝置、每個瀏覽器都要各做一次**（手機瀏覽器、電腦瀏覽器、Android App 各算一台）——token 和 repo 設定只存在那台裝置裡，不會跟著帳號同步。書和進度則在 repo 裡，連上之後各台裝置看到的是同一個書架。
