@@ -52,6 +52,17 @@
 
 書架上有一本內建的「**K書吧使用說明**」，寫了章節怎麼切、怎麼朗讀，還有一段可以直接貼給 AI 的寫書格式要求——請 AI 寫書時把那段附上，匯入時章節就會切得剛好。
 
+### 跟其他 App 共用這個 repo
+
+一個私有 repo 可以同時給好幾個 App 當雲端存檔，**一支 token 全部通用**，不用每個 App 各建一個 repo、各產生一支 token。每個 App 只讀寫 `saves/` 底下自己的位置，互不干擾，目錄也是 App 自己建的：
+
+| App | 存在 repo 的哪裡 |
+|---|---|
+| [K書吧](https://github.com/agan0617/KBookBar) | `saves/kbookbar/`（書目、書檔、閱讀進度） |
+| [魔塔](https://github.com/agan0617/MagicTower) | `saves/magictower.json` |
+
+已經在其中一個 App 連上的話，其他 App 連線時貼同一支 token、repo 填同一個就好。
+
 ### 要不要自己架一份？
 
 直接用上面的網址最省事，頁面改版你也會跟著拿到新功能。但這代表你的 token 是交給這個網址上的程式使用（程式只會把 token 送到 `api.github.com`，可以自己看 `index.html` 確認）。
