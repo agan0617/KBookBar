@@ -503,7 +503,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最下面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.13.1';
+const WEB_VERSION = '2026.10.13.2';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -589,7 +589,7 @@ const FONTS = {
 };
 const WIDTHS = { s: '30em', m: '38em', l: '48em' };
 const storedPrefs = LS.get('prefs', null);
-const prefs = Object.assign({ fs: matchMedia('(max-width: 600px)').matches ? 19 : 21, lh: 1.9, font: 'serif', theme: 'auto', width: 'm', indent: true, rate: 1, voice: '', cloudRate: 0.85, volume: 1, sleep: '0', sort: 'recent', tag: '', author: '', paren: 'gloss', view: 'grid' }, storedPrefs || {});
+const prefs = Object.assign({ fs: matchMedia('(max-width: 600px)').matches ? 19 : 21, lh: 1.9, font: 'serif', theme: 'auto', width: 'm', indent: true, rate: 1, voice: '', cloudRate: 0.8, volume: 1, sleep: '0', sort: 'recent', tag: '', author: '', paren: 'gloss', view: 'grid' }, storedPrefs || {});
 const savePrefs = () => LS.set('prefs', prefs);
 
 /* ───────── 內建說明書 ───────── */
@@ -693,7 +693,7 @@ pronounce:
 - **括號裡的補充**：朗讀設定可以選照念、只跳過英文注解（例如「伺服器（server）」不念括號，預設）、或括號都不念。
 - 朗讀時會盡量讓螢幕保持亮著（App 1.6 以上念的時候螢幕不會自動鎖定，暫停或停止後照手機設定的時間鎖定）。切到別的 App 或鎖定螢幕時，K書吧 會設法讓朗讀繼續，通知欄和鎖定畫面也有播放、暫停、上一段／下一段的按鈕；不過有些手機的瀏覽器還是會把朗讀停掉，回到 K書吧 就會接著念。
 - **Android 上想關螢幕聽書**：用 K書吧 App。App 裡的朗讀交給手機的語音引擎，切 App、鎖螢幕都會繼續念；語音清單是手機裝的語音。App 的瀏覽器資料跟 Chrome 分開，第一次打開要再貼一次 token。
-- **雲端語音**（App 1.8 以上）：語音清單最前面的「雲端 · 曉臻／曉雨／雲哲」是 Azure 的神經語音，念起來比手機語音自然很多。第一次選會請你貼 Azure 語音服務的金鑰與區域（之後可以按「雲端語音金鑰…」更換）。雲端語音的聲音偏快，選了它時朗讀設定會多一個「雲端語音速度」（預設 0.85×，App 1.11 以上），語速再疊在上面。要有網路；免費方案每月 50 萬字（約 30 小時），用完或斷網時自動改用手機語音念。
+- **雲端語音**（App 1.8 以上）：語音清單最前面的「雲端 · 曉臻／曉雨／雲哲」是 Azure 的神經語音，念起來比手機語音自然很多。第一次選會請你貼 Azure 語音服務的金鑰與區域（之後可以按「雲端語音金鑰…」更換）。雲端語音的聲音偏快，選了它時朗讀設定會多一個「雲端語音速度」（預設 0.8×，App 1.11 以上），語速再疊在上面。要有網路；免費方案每月 50 萬字（約 30 小時），用完或斷網時自動改用手機語音念。
 
 ---
 
