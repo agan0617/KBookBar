@@ -191,6 +191,8 @@ select{height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--line)
 .rtitle b,.rtitle span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rtitle b{font-family:var(--f-display);font-weight:600;font-size:14.5px}
 .rtitle span{font-size:12px;color:var(--muted)}
+.rpct{flex:none;min-width:2.8em;padding-inline:2px;text-align:center;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+@media (max-width:420px){.rpct{min-width:2.3em;padding-inline:0;font-size:11.5px}}
 .rprog{position:fixed;top:0;left:0;right:0;height:2px;z-index:21;pointer-events:none}
 .rprog i{display:block;height:100%;width:0;background:var(--accent);opacity:.8}
 .rmain{padding-top:calc(76px + env(safe-area-inset-top,0px));padding-bottom:64px;padding-inline:20px}
@@ -360,6 +362,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
     <button class="icon" id="btnPrevCh" type="button" aria-label="上一章" title="上一章"></button>
     <div class="rtitle"><b id="rBook"></b><span id="rChap"></span></div>
     <button class="icon" id="btnNextCh" type="button" aria-label="下一章" title="下一章"></button>
+    <span class="rpct" id="rPct" title="全書進度"></span>
     <button class="icon" id="btnTts" type="button" aria-label="朗讀"></button>
     <button class="icon aa" id="btnAa" type="button" aria-label="閱讀設定">Aa</button>
     <button class="icon" id="btnToc" type="button" aria-label="目錄"></button>
@@ -505,7 +508,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.14.1';
+const WEB_VERSION = '2026.10.14.2';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1811,6 +1814,12 @@ function currentBlock() {
 function updateReadBar() {
   const max = document.documentElement.scrollHeight - innerHeight;
   $('#rprogBar').style.width = (max > 0 ? Math.min(100, scrollY / max * 100) : 100) + '%';
+  // 頂端列的全書進度：跟書架上的百分比同一個算法（朗讀中看念到哪段，否則看畫面最上面那段）
+  $('#rPct').textContent = R.chapters.length ? Math.round(bookPct(T.playing ? T.b : currentBlock()) * 100) + '%' : '';
+}
+function bookPct(b) {
+  const n = R.chapters.length; if (!n) return 0;
+  return Math.min(1, (R.ch + (R.blocks.length ? (b + 1) / R.blocks.length : 1)) / n);
 }
 
 /* 進度：本機馬上記；GitHub 每存一次就是一個 commit，所以只在換章、回書架、離開頁面時存，
@@ -1825,8 +1834,7 @@ function savePos(blk) {
   if (!R.book || !R.chapters.length) return;
   if (blk == null && NATIVE && document.visibilityState === 'hidden') return;
   const b = blk != null ? blk : T.playing ? T.b : currentBlock();
-  const n = R.chapters.length;
-  const p = { ch: R.ch, b, pct: Math.min(1, (R.ch + (R.blocks.length ? (b + 1) / R.blocks.length : 1)) / n), t: (R.chapters[R.ch] && R.chapters[R.ch].title) || '', at: Date.now() };
+  const p = { ch: R.ch, b, pct: bookPct(b), t: (R.chapters[R.ch] && R.chapters[R.ch].title) || '', at: Date.now() };
   LS.set('prog:' + R.book.id, p);
   if (R.book.builtin || !canWrite()) return;
   const saved = ownCloud(R.book.id);
@@ -2425,8 +2433,10 @@ function markSpeaking(b) {
   const bottomLimit = innerHeight - bottomInset() - 20;
   if (r.top < barH() + 10 || r.bottom > bottomLimit) {
     const y = r.top + scrollY - Math.max(barH() + 20, (bottomLimit - r.height) * 0.35);
-    window.scrollTo({ top: Math.max(0, y), behavior: reduced ? 'auto' : 'smooth' });
+    // 視窗縮小（頁面在背景）時平滑捲動會卡住、等切回來才接著捲到舊的位置，所以背景一律直接跳過去
+    window.scrollTo({ top: Math.max(0, y), behavior: reduced || document.hidden ? 'auto' : 'smooth' });
   }
+  updateReadBar();
 }
 function clearSpeaking() { const prev = $('#article .speaking'); if (prev) prev.classList.remove('speaking'); }
 function updatePlayer() {
@@ -2642,7 +2652,11 @@ function wire() {
         }
         else renderLibrary();
       }
-      else if (T.playing) { acquireWake(); if (synth && !synth.speaking) restartSpeech(); }
+      else if (T.playing) {
+        acquireWake(); if (synth && !synth.speaking) restartSpeech();
+        // 切回來時把畫面拉回正在念的那段，不要等到下一段開始才跳
+        else if (R.view === 'reader') requestAnimationFrame(() => markSpeaking(T.b));
+      }
       // 切回來時抓一次別台裝置的最新書架與進度
       if (Date.now() - lastRefresh > 30000 && !cloudBusy) {
         lastRefresh = Date.now();
