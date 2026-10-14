@@ -508,7 +508,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.14.2';
+const WEB_VERSION = '2026.10.14.3';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1469,6 +1469,9 @@ async function addOne(text, format, fallbackTitle, forcedTitle, forcedAuthor) {
 // 每打開一層推一格 history；用按鈕、Esc、點外面關掉時再退回去，不留空格子。
 // history.go() 要等一下才生效，緊接著的 pushState（例如從進度格直接翻開書）要排在它後面，不然會被退掉。
 const H = { stack: [], seq: Date.now(), q: Promise.resolve(), skip: null };
+// 捲動位置全部自己管（翻開書捲到進度、回書架捲回 R.libScroll）。瀏覽器預設在 history.go() 時會把捲動還原成那一格當時的位置，
+// 關掉對話框退格子時就會蓋掉剛翻開的書的位置——從「所有裝置的閱讀進度」點一格，書會被拉回章首
+try { history.scrollRestoration = 'manual'; } catch {}
 function histOp(fn) { H.q = H.q.then(fn, fn); }
 function layerPush(name, close) {
   if (H.stack.some(x => x.name === name && x.open)) return;
