@@ -419,6 +419,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
       <button type="button" data-v="s">窄</button>
       <button type="button" data-v="m">中</button>
       <button type="button" data-v="l">寬</button>
+      <button type="button" data-v="xl">特寬</button>
     </div>
   </div>
   <div class="row">
@@ -503,7 +504,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最下面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.13.2';
+const WEB_VERSION = '2026.10.14';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -587,7 +588,7 @@ const FONTS = {
   sans: "'Noto Sans TC','Microsoft JhengHei','PingFang TC',sans-serif",
   kai: "'LXGW WenKai TC','DFKai-SB','BiauKai','KaiTi',serif"
 };
-const WIDTHS = { s: '30em', m: '38em', l: '48em' };
+const WIDTHS = { s: '30em', m: '38em', l: '48em', xl: '60em' };
 const storedPrefs = LS.get('prefs', null);
 const prefs = Object.assign({ fs: matchMedia('(max-width: 600px)').matches ? 19 : 21, lh: 1.9, font: 'serif', theme: 'auto', width: 'm', indent: true, rate: 1, voice: '', cloudRate: 0.8, volume: 1, sleep: '0', sort: 'recent', tag: '', author: '', paren: 'gloss', view: 'grid' }, storedPrefs || {});
 const savePrefs = () => LS.set('prefs', prefs);
@@ -664,7 +665,7 @@ pronounce:
 閱讀時點右上角的 **Aa**：
 
 - **字級**：14 到 34 級，用拉桿或 A− / A+ 調整。
-- **行高**、**版寬**、**首行縮排**。
+- **行高**、**版寬**（窄、中、寬、特寬；特寬適合電腦大螢幕）、**首行縮排**。
 - **字體**：明體、黑體、楷體。
 - **底色**：跟隨系統、白、米、綠、夜。
 
