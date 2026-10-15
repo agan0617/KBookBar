@@ -134,6 +134,10 @@ button.chip:hover{border-color:var(--faint)}
 .tag-bar:has(+ .tag-bar:not([hidden])){margin-bottom:10px}
 /* 滑鼠操作的裝置沒辦法用手指橫滑（捲軸又藏起來了），改成換行全部攤開；手機維持一排左右滑 */
 @media (hover:hover) and (pointer:fine){.tag-bar{flex-wrap:wrap;overflow-x:visible}}
+.shelf-search{position:relative;margin:-6px 0 14px}
+.shelf-search svg{position:absolute;left:11px;top:50%;width:17px;height:17px;transform:translateY(-50%);color:var(--faint);pointer-events:none}
+.shelf-search input{width:100%;height:38px;padding:0 12px 0 36px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font-size:15px}
+.shelf-search input:focus{outline:none;border-color:var(--accent)}
 select{height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--raised);font-size:13.5px;max-width:100%}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:30px 18px;padding-bottom:64px}
 @media (min-width:700px){.grid{grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:34px 26px}}
@@ -349,6 +353,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
         <button class="view-btn" id="viewBtn" type="button" aria-label="切換成清單顯示"></button>
       </div>
     </div>
+    <div class="shelf-search" id="shelfSearch"><input type="search" id="searchInput" placeholder="搜尋書名、作者、標籤" aria-label="搜尋書架" autocomplete="off" enterkeyhint="search"></div>
     <div class="tag-bar" id="tagBar" hidden></div>
     <div class="tag-bar" id="authorBar" hidden></div>
     <div class="grid" id="grid"></div>
@@ -508,7 +513,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.14.3';
+const WEB_VERSION = '2026.10.15';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -534,6 +539,7 @@ const I = {
   more: SVG('<circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/>'),
   tune: SVG('<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'),
   arrow: SVG('<path d="M5 12h14M13 6l6 6-6 6"/>'),
+  search: SVG('<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>'),
   vol: SVG('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor" stroke="none"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/>'),
   chPrev: SVG('<path d="M12 6l-6 6 6 6M18.5 6l-6 6 6 6"/>'),
   chNext: SVG('<path d="M12 6l6 6-6 6M5.5 6l6 6-6 6"/>'),
@@ -609,6 +615,7 @@ K書吧讀的是純文字書檔：**.md**（Markdown）或 **.txt**。叫 AI 寫
 - **拖進視窗**：電腦上直接把檔案拖到書架上。
 - **同名的書**：再匯入一次同書名的檔案，可以選「取代舊版」，閱讀進度會保留。書改版重寫時用這個。
 - **標籤**：書檔開頭的 frontmatter 寫一行「tags: 遊戲, 日本史」，匯入後書架標題下會多一排標籤，點一個就只看那一類的書（再點一次回到全部）。沒寫的書按書卡的「⋯」→ 編輯，在「標籤」欄用逗號分隔填。
+- **搜尋**：書架標題下的搜尋框打書名、作者或標籤的任何一段，書架就只剩對得到的書；空白隔開多個詞要全部對到（例如「金庸 射鵰」）。搜尋找的是整個書架，不管上面選了哪個標籤或作者；清空就回到原本的篩選。電腦上在書架按「/」直接跳到搜尋框，只剩一本時按 Enter 就打開。
 - **作者**：標籤底下還有一排作者，有兩本以上的作者各一格，其他的收在「其他」。點一個只看那位作者的書，可以跟標籤一起用（例如「武俠」加「金庸」）。作者就是「作者：」那一行，不用另外打成標籤。
 - **讀音**：frontmatter 裡的「pronounce:」列出朗讀容易念錯的詞，格式見〈給 AI 的格式〉。只影響朗讀，畫面上照樣是原文。
 - 也可以直接請 Claude 把寫好的書放上書架。
@@ -1253,6 +1260,9 @@ function sortedBooks(src = S.books) {
   else list.sort((a, b) => (lastAt(b) - lastAt(a)) || ((b.addedAt || 0) - (a.addedAt || 0)));
   return list;
 }
+// 搜尋比對：全形半形、大小寫、空白都不計較；空白隔開的多個詞要全部對到（「金庸 射鵰」）
+const searchNorm = s => String(s || '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+const searchTerms = q => String(q || '').normalize('NFKC').toLowerCase().split(/\s+/).filter(Boolean);
 function renderLibrary() {
   const books = S.books;
   // 標籤列：有任何一本書打了標籤才出現，依書數排；選的標籤已經沒書就退回全部。只篩書架，不動「繼續閱讀」
@@ -1279,10 +1289,16 @@ function renderLibrary() {
     const chip = (key, label, n) => `<button class="chip" type="button" data-author="${esc(key)}" aria-pressed="${prefs.author === key}">${esc(label)} <b>${n}</b></button>`;
     authorBar.innerHTML = `<span class="bar-label">作者</span>` + chip('', '全部', books.length) + authors.map(([a, n]) => chip(a, a, n)).join('') + (others ? chip(OTHER_AUTHOR, '其他', others) : '');
   }
-  const shown = books.filter(b => (!prefs.tag || (prefs.tag === NO_TAG ? !bookTags(b).length : bookTags(b).includes(prefs.tag)))
+  // 搜尋：有字時搜整個書架（不管上面選了哪個標籤／作者，免得書在別類找不到），標籤列和作者列先收起來；清空就回到原本的篩選
+  $('#shelfSearch').hidden = !books.length;
+  const terms = searchTerms($('#searchInput').value);
+  const searching = terms.length > 0 && books.length > 0;
+  if (searching) tagBar.hidden = authorBar.hidden = true;
+  const shown = searching ? books.filter(b => { const h = searchNorm([b.title, bookAuthor(b), ...bookTags(b)].join(' ')); return terms.every(t => h.includes(t)); })
+    : books.filter(b => (!prefs.tag || (prefs.tag === NO_TAG ? !bookTags(b).length : bookTags(b).includes(prefs.tag)))
     && (!prefs.author || (prefs.author === OTHER_AUTHOR ? !inChip.has(bookAuthor(b)) : bookAuthor(b) === prefs.author)));
   const total = shown.reduce((s, b) => s + (b.chars || 0), 0);
-  const tagLabel = [prefs.tag && (prefs.tag === NO_TAG ? '未分類' : prefs.tag), prefs.author && (prefs.author === OTHER_AUTHOR ? '其他作者' : prefs.author)].filter(Boolean).map(x => x + ' · ').join('');
+  const tagLabel = searching ? '搜尋結果 · ' : [prefs.tag && (prefs.tag === NO_TAG ? '未分類' : prefs.tag), prefs.author && (prefs.author === OTHER_AUTHOR ? '其他作者' : prefs.author)].filter(Boolean).map(x => x + ' · ').join('');
   $('#libSub').textContent = !S.loaded ? '正在打開書架…' : (S.mode === 'setup' || (S.mode === 'error' && !books.length)) ? '還沒連上書架' : books.length ? `${tagLabel}${shown.length} 本書 · 共 ${fmtChars(total)}` : '書架還是空的';
   const writable = canWrite();
   $('#btnImport').hidden = !writable;
@@ -1313,7 +1329,7 @@ function renderLibrary() {
   vb.title = listMode ? '格狀顯示' : '清單顯示';
   $('#grid').classList.toggle('list', listMode);
 
-  const cards = sortedBooks(shown).concat(prefs.tag || prefs.author ? [] : [guideBook()]).map(b => {
+  const cards = sortedBooks(shown).concat(prefs.tag || prefs.author || searching ? [] : [guideBook()]).map(b => {
     const p = getProgress(b.id);
     const pct = p ? Math.round((p.pct || 0) * 100) : 0;
     const chs = b.chapters || 0;
@@ -1346,6 +1362,8 @@ function renderLibrary() {
     html = `<p class="empty">這台裝置還沒連上 GitHub 書架。第一次使用要貼一次 token，旁邊那本說明〈在新裝置上連上書架〉有步驟。<br><button class="btn primary" type="button" data-connect style="margin-top:12px">連上書架</button></p>` + html;
   } else if (S.mode === 'error') {
     html = `<p class="empty">${books.length ? '沒連上 GitHub，下面是這台裝置上的書，可以照常讀；新增或刪書要等連上之後。' : '書架讀不到。'}<br>${esc(S.err)}<br><button class="btn primary" type="button" data-connect style="margin-top:12px">重新連線</button></p>` + html;
+  } else if (searching && !shown.length) {
+    html = `<p class="empty">書架上找不到「${esc($('#searchInput').value.trim())}」。可以只打書名的一部分，或換成作者名試試。</p>`;
   } else if (S.loaded && !books.length) {
     html = `<p class="empty">書架上還沒有書。${writable ? '按右上角「匯入檔案」選 AI 寫好的 .md／.txt' + (coarse ? '' : '，也可以把檔案直接拖進這個視窗') + '。' : ''}旁邊那本說明寫了K書吧怎麼切章節、怎麼朗讀。</p>` + html;
   }
@@ -2503,6 +2521,16 @@ function wire() {
   $('#fileInput').addEventListener('change', e => { const f = e.target.files; if (f && f.length) importFiles(f); e.target.value = ''; });
   $('#sortSel').onchange = e => { prefs.sort = e.target.value; savePrefs(); renderLibrary(); };
   $('#viewBtn').onclick = () => { prefs.view = prefs.view === 'list' ? 'grid' : 'list'; savePrefs(); renderLibrary(); };
+  // 搜尋框：打字就篩（輸入法還在選字時先不動）；Esc 清空；Enter 在只剩一本時直接打開
+  $('#shelfSearch').insertAdjacentHTML('afterbegin', I.search);
+  const sIn = $('#searchInput');
+  sIn.addEventListener('input', e => { if (!e.isComposing) renderLibrary(); });
+  sIn.addEventListener('compositionend', () => renderLibrary());
+  sIn.addEventListener('keydown', e => {
+    if (e.isComposing) return;
+    if (e.key === 'Escape' && sIn.value) { sIn.value = ''; renderLibrary(); e.stopPropagation(); }
+    else if (e.key === 'Enter') { const one = $$('#grid [data-open]'); if (one.length === 1) { sIn.blur(); one[0].click(); } }
+  });
   $('#syncChip').onclick = connectDialog;
   $('#library').addEventListener('click', e => {
     if (e.target.closest('[data-connect]')) { connectDialog(); return; }
@@ -2624,6 +2652,9 @@ function wire() {
       if (R.view === 'reader') { $('#btnBack').click(); }
       return;
     }
+    // 書架上按 / 跳到搜尋框
+    if (R.view === 'library' && e.key === '/' && $('#modal').hidden && !e.ctrlKey && !e.metaKey && !e.altKey
+      && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !$('#shelfSearch').hidden) { $('#searchInput').focus(); e.preventDefault(); return; }
     if (R.view !== 'reader' || !$('#modal').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     if (e.key === 'ArrowLeft') { goChapter(R.ch - 1); e.preventDefault(); }
