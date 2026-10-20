@@ -314,6 +314,12 @@ body.ttsbar-on #reader.with-player .rmain{padding-bottom:calc(230px + var(--ttsb
 .panel .hint{margin:8px 0 0;font-size:12.5px;color:var(--faint);line-height:1.6}
 .actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:20px}
 .actions .left{margin-right:auto}
+/* 對白換聲音：一個角色一列（類別、聲音、音高、試聽） */
+.cast-row{display:grid;grid-template-columns:3em minmax(0,1fr) 5.2em auto;gap:6px;align-items:center;margin-top:8px}
+.cast-row span{font-size:14px}
+.cast-row.head span{font-size:12.5px;color:var(--faint)}
+.cast-row select{min-width:0;width:100%;padding:7px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:14px}
+.cast-row .btn{padding:6px 10px}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:70;max-width:calc(100% - 32px);padding:11px 18px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;box-shadow:var(--shadow);text-align:center}
 body.player-open .toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 body.ttsbar-on .toast{bottom:calc(24px + var(--ttsbar-h))}
@@ -481,6 +487,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
         </select>
       </label>
       <button class="btn pron-btn" type="button" id="btnPron">讀音字典…</button>
+      <button class="btn pron-btn" type="button" id="btnCast">對白換聲音…</button>
       <button class="btn pron-btn" type="button" id="btnCloud" hidden>雲端語音金鑰…</button>
     </div>
     <p class="p-hint" id="voiceNote" hidden></p>
@@ -513,7 +520,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.20.1';
+const WEB_VERSION = '2026.10.20.2';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -600,7 +607,7 @@ const FONTS = {
 };
 const WIDTHS = { s: '30em', m: '38em', l: '48em', xl: '60em' };
 const storedPrefs = LS.get('prefs', null);
-const prefs = Object.assign({ fs: matchMedia('(max-width: 600px)').matches ? 19 : 21, lh: 1.9, font: 'serif', theme: 'auto', width: 'm', indent: true, rate: 1, voice: '', cloudRate: 0.8, volume: 1, sleep: '0', sort: 'recent', tag: '', author: '', paren: 'gloss', view: 'grid' }, storedPrefs || {});
+const prefs = Object.assign({ fs: matchMedia('(max-width: 600px)').matches ? 19 : 21, lh: 1.9, font: 'serif', theme: 'auto', width: 'm', indent: true, rate: 1, voice: '', cloudRate: 0.8, volume: 1, sleep: '0', sort: 'recent', tag: '', author: '', paren: 'gloss', view: 'grid', castOn: true, castVoices: null }, storedPrefs || {});
 const savePrefs = () => LS.set('prefs', prefs);
 
 /* ───────── 內建說明書 ───────── */
@@ -700,6 +707,7 @@ pronounce:
 - 念到**章名、小節標題**時，前後會各停一下、念得慢一點，聽得出那是標題不是內文；換段也會停一下，換章停最久，對話前後會留個空（App 要 1.5 以上，1.4 只有標題停頓）。語速調快時停頓跟著縮短。
 - **念錯字了**：選取念錯的詞，下方會出現「修正讀音」，輸入同音字（例如「重新」寫成「蟲新」），可以先**試聽**，再選要套用到「這本書」「同系列」「同作者」或「所有書」（書有填系列、作者才會出現那兩格）。一般的詞（重新、重來）選所有書；人名選同系列或這本書。畫面上照樣是原文，只有朗讀會換；正在念的話，存好會從這一段重新念。只選一個字會提醒你：那個字在書裡每次出現都會被換掉，最好選整個詞。
 - **讀音字典**：朗讀設定裡的「讀音字典…」可以一次看、一次改這本書、同系列、同作者、所有書四份字典；書卡「⋯」→ 編輯也有這本書的讀音欄。書檔 frontmatter 的「pronounce:」算在「這本書」裡，同一個詞以網頁上改的為準。好幾份都寫了同一個詞時，越具體的優先：這本書 → 系列 → 作者 → 所有書。字典存在書架上，每台裝置都一樣。
+- **對白換聲音**：書有**角色表**時，對白依說話的人換聲音——旁白照「語音」，男、女、老男、老女、少年、少女各用指定的聲音。角色表在書卡「⋯」→ 編輯的「角色」欄（一行一個「名字 = 男」，稱呼也可以寫，例如「老婦 = 老女」），或請 Claude 做；書的內容不會被改。誰在說話是照「某某道：」這類寫法判斷的，偶爾會配錯。朗讀設定的「對白換聲音…」可以關掉、或換各角色的聲音和音高：App 裡雲端語音、手機語音各一份（雲端額度用完改用手機語音時套用後者），網頁是瀏覽器語音一份，都存在各自的裝置。App 要 1.13 以上。
 - **場景分隔**：整段只有符號的（例如「＊＊＊」）不念，換成停久一點。
 - **表格、一行一行的段落**：表格一列的欄位之間、段落裡的換行處（詩、歌詞、地址）會停一下；中文旁邊的半形標點（, . ? ! : ;）當全形念，中文字之間多出來的空格不算。
 - **符號和數字**：破折號、刪節號念成停頓；「2.5×」念「2.5 倍」、「3×4」念「3 乘 4」、「3～5」念「3 到 5」；「II」「IV」這類羅馬數字念成中文數字；「網頁／App」的斜線念成停頓。
@@ -794,6 +802,7 @@ const fmPron = id => normPron(((parsedCache.get(id) || {}).meta || {}).pronounce
 // 這本書自己的字典（不含上面幾層）：frontmatter ＋ 網頁上修的
 const bookPron = id => Object.assign(fmPron(id), bookEdits(id));
 function refreshPron() {
+  R.segs = null; // 讀音或角色表變了，對白切法跟著重算
   if (!R.book) { R.pron = s => s; return; }
   const b = curBook(R.book);
   R.pron = compilePron(R.book.builtin ? globalPron()
@@ -1571,6 +1580,7 @@ function editDialog(book) {
       <label for="eSeries">系列</label><input type="text" id="eSeries" value="${esc(bookSeries(book))}" placeholder="同系列的書共用一份讀音字典，例：衛斯理">
       <label for="eTags">標籤</label><input type="text" id="eTags" value="${esc(bookTags(book).join(', '))}" placeholder="用逗號分隔，例：遊戲, 日本史">
       <label for="ePron">讀音（只有朗讀會換，一行一條）</label><textarea id="ePron" class="pron-list" disabled placeholder="正在讀取…"></textarea>
+      <label for="eCast">角色（對白換聲音用，一行一個：名字或稱呼 = 男／女／老男／老女／少年／少女）</label><textarea id="eCast" class="pron-list" placeholder="陳家洛 = 男\n霍青桐 = 女\n陸菲青 = 老男">${esc(castToText(normCast(book.cast)))}</textarea>
       <p class="hint">${fmtChars(book.chars)} · ${book.chapters || 0} 章 · ${book.format === 'txt' ? '純文字' : 'Markdown'} · 加入於 ${new Date(book.addedAt || Date.now()).toLocaleDateString('zh-TW')}</p>
       <div class="actions"><button class="btn danger left" type="button" data-del>刪除這本</button><button class="btn" type="button" data-x>取消</button><button class="btn primary" type="submit">儲存</button></div>
     </form>`);
@@ -1593,7 +1603,9 @@ function editDialog(book) {
     const title = $('#eTitle').value.trim().slice(0, 120), author = $('#eAuthor').value.trim().slice(0, 80), tags = normTags($('#eTags').value);
     const series = $('#eSeries').value.trim().slice(0, 40);
     if (!title) return;
-    const patch = { title, author, tags, series: series || undefined };
+    const cast = castFromText($('#eCast').value);
+    const castLabels = Object.fromEntries(Object.entries(cast).map(([k, v]) => [k, (CAST_ROLES.find(([x]) => x === v) || [, v])[1]]));
+    const patch = { title, author, tags, series: series || undefined, cast: Object.keys(castLabels).length ? castLabels : undefined };
     if (pronReady) { const d = editsFor(book.id, pronFromText($('#ePron').value)); patch.pronounce = Object.keys(d).length ? d : undefined; }
     closeModal();
     try { await S.backend.update(book.id, patch); toast('已儲存'); } catch (err) { toast(errMsg(err), 5000); }
@@ -1748,6 +1760,87 @@ function pronListDialog() {
     });
   });
 }
+/* 對白換聲音的設定：開關＋聲音配置（App 有雲端、手機兩份，網頁只有瀏覽器語音一份），存在這台裝置 */
+const CAST_PITCH = [0.8, 0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2, 1.25];
+const CAST_SAMPLE = { m: '在下有一事相求，還請兄台留步。', f: '你這人好不講理，我偏不讓你過去。', om: '老夫行走江湖幾十年，甚麼場面沒見過。', of: '老身今日倒要看看，你們有多大本事。', b: '師父，我也要學這套功夫！', g: '姊姊你別急，我去幫你搶回來。', u: '這位朋友，請留步。' };
+function castPreview(kind, role, v, p) {
+  const text = CAST_SAMPLE[role] || CAST_SAMPLE.u;
+  if (NATIVE) {
+    // 手機語音那份的「同旁白」：旁白是雲端語音時，手機語音接手用的是手機預設
+    const voice = v || (kind === 'device' && String(prefs.voice || '').startsWith('azure:') ? '' : prefs.voice || '');
+    try { if (typeof NATIVE.previewPitch === 'function') NATIVE.previewPitch(text, voice, prefs.rate, prefs.volume, p); else NATIVE.preview(text, voice, prefs.rate, prefs.volume); } catch {}
+    return;
+  }
+  if (!synth) return;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(text), x = (v && T.voices.find(o => o.voiceURI === v)) || currentVoice();
+  if (x) { u.voice = x; u.lang = x.lang; } else u.lang = 'zh-TW';
+  u.rate = prefs.rate * cloudMul(); u.volume = prefs.volume; u.pitch = p; synth.speak(u);
+}
+function castDialog() {
+  const book = R.book && !R.book.builtin ? curBook(R.book) : null;
+  const n = book ? Object.keys(bookCast(book)).length : 0;
+  let list = [];
+  if (NATIVE) { try { list = JSON.parse(NATIVE.getVoices()) || []; } catch {} } else if (!T.voices.length) loadVoices();
+  const zh = l => /^(zh|cmn|yue)/i.test(String(l || ''));
+  const isCloud = v => String(v.id).startsWith('azure:');
+  const opts = {
+    cloud: list.filter(v => isCloud(v) && zh(v.lang)).map(v => [v.id, v.label]),
+    device: NATIVE ? list.filter(v => !isCloud(v) && zh(v.lang)).map(v => [v.id, v.label])
+      : T.voices.filter(v => zh(v.lang)).map(v => [v.voiceURI, v.name.replace(/^Microsoft\s+|\s*-\s*Chinese.*$/g, '') + '（' + v.lang + '）'])
+  };
+  const kinds = NATIVE ? [['cloud', '雲端語音'], ['device', '手機語音']] : [['device', '瀏覽器語音']];
+  let kind = NATIVE && String(prefs.voice || '').startsWith('azure:') ? 'cloud' : 'device';
+  const cfg = { cloud: castConfig('cloud'), device: castConfig('device') };
+  const oldApp = NATIVE && verNewer('1.13', appVersion() || '0');
+  const status = !book ? '先打開一本書，再來設定。'
+    : n ? `《${esc(book.title)}》的角色表有 ${n} 個名字。`
+    : `《${esc(book.title)}》還沒有角色表，對白照旁白念。角色表在書卡「⋯」→ 編輯的「角色」欄填，或請 Claude 做。`;
+  pausedWhile(resume => {
+    const p = openModal(`<h3>對白換聲音</h3>
+      <p class="m-body">書有角色表時，對白依說話的人換聲音：旁白照朗讀設定的「語音」，男女老少的對白各用下面指定的聲音。角色表是書目裡的資料，不改書的內容。</p>
+      <form id="castForm">
+        <label class="switch" for="castOn">對白換聲音<input type="checkbox" id="castOn"${prefs.castOn ? ' checked' : ''}></label>
+        <p class="hint">${status}${oldApp ? '<br><b>要 App 1.13 以上</b>才會換聲音，請到書架上方「檢查更新」下載新版。' : ''}</p>
+        ${kinds.length > 1 ? `<label>聲音配置</label><div class="seg" id="castKind">${kinds.map(([k, l]) => `<button type="button" data-v="${k}">${l}</button>`).join('')}</div>` : ''}
+        <div id="castRows"></div>
+        <p class="hint">「其他」是認不出誰在說話的對白。「同旁白」＝跟旁白同一個聲音，只用音高分男女。指定的聲音沒下載或用不了時，改用旁白的聲音。${NATIVE ? '雲端語音額度用完、斷網時會自動改用手機語音，這時套用「手機語音」那份。' : ''}</p>
+        <div class="actions"><button class="btn left" type="button" data-reset>還原預設</button><button class="btn" type="button" data-x>取消</button><button class="btn primary" type="submit">儲存</button></div>
+      </form>`);
+    const rows = () => {
+      const c = cfg[kind], o = opts[kind];
+      p.querySelector('#castRows').innerHTML = '<div class="cast-row head"><span>角色</span><span>聲音</span><span>音高</span><span></span></div>' + CAST_ROLES.map(([r, l]) => {
+        const has = !c[r].v || o.some(([id]) => id === c[r].v);
+        const vs = `<option value="">同旁白</option>${has ? '' : `<option value="${esc(c[r].v)}">${esc(c[r].v.replace(/^azure:/, ''))}（這台沒有）</option>`}` + o.map(([id, lab]) => `<option value="${esc(id)}">${esc(lab)}</option>`).join('');
+        return `<div class="cast-row" data-r="${r}"><span>${l}</span><select data-k="v" aria-label="${l}的聲音">${vs}</select>`
+          + `<select data-k="p" aria-label="${l}的音高">${CAST_PITCH.map(x => `<option value="${x}">${x}×</option>`).join('')}</select>`
+          + `<button class="btn" type="button" data-try>試聽</button></div>`;
+      }).join('');
+      p.querySelectorAll('.cast-row[data-r]').forEach(row => {
+        const r = row.dataset.r, sv = row.querySelector('[data-k="v"]'), sp = row.querySelector('[data-k="p"]');
+        sv.value = c[r].v; sp.value = String(CAST_PITCH.includes(c[r].p) ? c[r].p : 1);
+        sv.onchange = () => { c[r].v = sv.value; };
+        sp.onchange = () => { c[r].p = +sp.value; };
+        row.querySelector('[data-try]').onclick = () => castPreview(kind, r, c[r].v, c[r].p);
+      });
+      p.querySelectorAll('#castKind [data-v]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === kind)));
+    };
+    rows();
+    const seg = p.querySelector('#castKind');
+    if (seg) seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { kind = b.dataset.v; rows(); } });
+    p.querySelector('[data-reset]').onclick = () => { cfg[kind] = JSON.parse(JSON.stringify(CAST_DEFAULT[kind])); rows(); };
+    p.querySelector('[data-x]').onclick = closeModal;
+    p.querySelector('#castForm').addEventListener('submit', e => {
+      e.preventDefault();
+      prefs.castOn = p.querySelector('#castOn').checked;
+      prefs.castVoices = cfg; savePrefs();
+      modalResolve = null; closeModal();
+      speechRulesChanged(); toast(prefs.castOn ? '對白換聲音已儲存' : '已關掉對白換聲音');
+      resume();
+    });
+  });
+}
+
 // 選取文字時在下方顯示「修正讀音」（選一到二十個字才出現）
 let pronSel = '', pronTimer = null;
 function onSelChange() {
@@ -1826,6 +1919,7 @@ function openChapter(i, { block = 0 } = {}) {
   R.blocks.forEach((el, k) => { el.dataset.b = k; });
   R.silent = silentFlags(R.blocks);
   R.pre = preGaps(R.blocks);
+  R.segs = null;
   // 會念出來的段落編號（跳掉參考資料、程式碼這些不念的）：進度列和「第 x / n 段」只算這些
   R.spoken = R.blocks.map((_, k) => k).filter(k => blockText(k));
   // 段落換了一批，切好的句子快取就失效（speakNext 會依 T.b 重切）
@@ -2204,6 +2298,133 @@ function nodeText(n) {
 const rawText = el => nodeText(el).replace(/https?:\/\/\S+/g, ' ').replace(CITE_RE, '').replace(/\s+/g, ' ').trim();
 const speechText = (el, silent) => silent || isBreak(el) ? '' : speakable(R.pron ? R.pron(rawText(el)) : rawText(el));
 
+/* ───────── 對白換聲音（2026-10-20） ─────────
+   書目的 cast（加上同系列的 castBySeries）是「人名或稱呼 → 男／女／老男／老女／少年／少女」。朗讀時把每段切成
+   旁白和對白，對白依說話的人換聲音；書的原文不動，沒有角色表的書照舊全部用同一個聲音。
+   聲音配置存在這台裝置，分兩份：cloud（App 的雲端語音）、device（手機的語音引擎，或網頁上的瀏覽器語音），
+   角色 → {v: 聲音 id（空字串＝跟旁白一樣）, p: 音高倍率}。旁白一律是朗讀設定的「語音」。 */
+const CAST_ROLES = [['m', '男'], ['f', '女'], ['om', '老男'], ['of', '老女'], ['b', '少年'], ['g', '少女'], ['u', '其他']]; // 其他＝認不出是誰說的
+const CAST_KEY = Object.fromEntries(CAST_ROLES.map(([k, l]) => [l, k]));
+const CAST_DEFAULT = {
+  // 男角用雲逸（多語言聲音講台灣國語；Ken 的旁白用雲哲，2026-10-20 指定）
+  cloud: {
+    m: { v: 'azure:zh-CN-YunyiMultilingualNeural', p: 1 }, om: { v: 'azure:zh-CN-YunyiMultilingualNeural', p: 0.9 }, b: { v: 'azure:zh-CN-YunyiMultilingualNeural', p: 1.1 },
+    f: { v: 'azure:zh-TW-HsiaoChenNeural', p: 1 }, of: { v: 'azure:zh-TW-HsiaoChenNeural', p: 0.9 }, g: { v: 'azure:zh-TW-HsiaoYuNeural', p: 1.05 }, u: { v: '', p: 1 }
+  },
+  // 手機、瀏覽器的聲音每台不同，預設只用音高分男女，聲音要在設定裡自己指定
+  device: {
+    m: { v: '', p: 0.85 }, om: { v: '', p: 0.8 }, b: { v: '', p: 0.95 },
+    f: { v: '', p: 1.15 }, of: { v: '', p: 1.05 }, g: { v: '', p: 1.25 }, u: { v: '', p: 1 }
+  }
+};
+function castConfig(kind) {
+  const mine = (prefs.castVoices && prefs.castVoices[kind]) || {};
+  const out = {};
+  for (const [k] of CAST_ROLES) {
+    const d = CAST_DEFAULT[kind][k], x = mine[k] || {};
+    out[k] = { v: typeof x.v === 'string' ? x.v : d.v, p: +x.p > 0 ? +x.p : d.p };
+  }
+  return out;
+}
+// 角色表：值可以寫「男」或「m」；認不得的類別丟掉
+function normCast(o) {
+  const out = {};
+  if (o && typeof o === 'object' && !Array.isArray(o)) for (const [k, v] of Object.entries(o)) {
+    const name = String(k).trim().slice(0, 20), r = String(v ?? '').trim();
+    const key = CAST_KEY[r] || (CAST_ROLES.some(([x]) => x === r) ? r : '');
+    if (name && key && key !== 'u') out[name] = key;
+  }
+  return out;
+}
+const castToText = o => Object.entries(o).map(([k, v]) => `${k} = ${(CAST_ROLES.find(([x]) => x === v) || [, v])[1]}`).join('\n');
+function castFromText(s) {
+  const o = {};
+  String(s || '').split('\n').forEach(l => { const p = pronPair(l); if (p) o[p[0]] = p[1]; });
+  return normCast(o);
+}
+// 這本書的角色表：同系列的 → 這本書的（同一個名字以這本書的為準）
+function bookCast(book) {
+  const b = curBook(book); if (!b || b.builtin) return {};
+  const s = bookSeries(b), all = (GH.lib && GH.lib.castBySeries) || {};
+  return Object.assign(normCast(s ? all[s] : null), normCast(b.cast));
+}
+const castActive = () => !!(prefs.castOn && R.book && Object.keys(bookCast(R.book)).length);
+
+/* 找說話的人：名字（也比對讀音字典換過的寫法，對白是換過讀音之後才切的）、代名詞「他／她」。
+   「對／向／朝／跟／問…」後面的是被說話的人，跳過 */
+let castCache = null;
+function castMatcher() {
+  const cast = bookCast(R.book), key = R.book && R.book.id;
+  if (castCache && castCache.key === key && castCache.cast === JSON.stringify(cast) && castCache.pron === R.pron) return castCache;
+  const role = {};
+  for (const [n, r] of Object.entries(cast)) { role[n] = r; if (R.pron) role[R.pron(n)] = r; }
+  const names = Object.keys(role).sort((a, b) => b.length - a.length);
+  const re = new RegExp((names.length ? names.map(reEsc).join('|') + '|' : '') + '(?<!其)[她他](?![們们人])', 'g');
+  castCache = { key, cast: JSON.stringify(cast), pron: R.pron, re, role: w => w === '她' ? 'f' : w === '他' ? 'm' : role[w] || 'u' };
+  return castCache;
+}
+// 前面接這些字的名字是受詞（被說話、被看見的人），不是說話的人；「只聽陸菲青道」的「聽」不算
+const CAST_ADDR = /(?:對|向|朝|跟|與|和|問|叫|替|給|見|把|將|指著|望著|看著|瞧著|拉住|拉著)$/;
+function castFind(m, s, first) {
+  let hit = null, x; m.re.lastIndex = 0;
+  while ((x = m.re.exec(s))) {
+    if (CAST_ADDR.test(s.slice(Math.max(0, x.index - 2), x.index))) continue;
+    hit = x[0]; if (first) break;
+  }
+  return hit;
+}
+/* 一段念出來的文字切成旁白／對白：回傳 [[角色, 字數], …]（加起來剛好是整段），整段沒有對白回傳 null。
+   「」前面是句尾、冒號或段首才算對白；「一招「白雲蒼狗」」這種前面是一般字或逗號的是名稱，照旁白念。
+   說話的人：冒號往前最近一個有名字的小句裡的主詞 → 「……」後面接的名字（「……」李沅芷道）
+   → 同一段上一句對白的人 → 上一段沒關的引號（一個人連講好幾段）→ 一來一往的對話裡輪到的另一個人。
+   st 是跨段落的狀態：last、prev（最近兩個說話的人）、open（還沒關的引號是誰講的） */
+function castSegs(s, st, m) {
+  const cuts = []; let i = 0, inBlock = null;
+  while (i < s.length) {
+    const q = s.indexOf('「', i); if (q < 0) break;
+    const before = s.slice(0, q).replace(/\s+$/, '');
+    let d = 0, e = q;
+    for (; e < s.length; e++) { if (s[e] === '「') d++; else if (s[e] === '」' && --d === 0) break; }
+    const closed = e < s.length, end = closed ? e + 1 : s.length;
+    i = end;
+    if (before && !/[。！？!?…」』：:]$/.test(before)) continue;
+    let who = null;
+    if (/[：:]$/.test(before)) {
+      // 從冒號往前一小句一小句找，取那一小句的主詞（第一個不是被稱呼的名字）：「少婦不接，問道：」→ 少婦
+      const sent = before.slice(Math.max(...['。', '！', '？', '!', '?', '」'].map(c => before.lastIndexOf(c))) + 1);
+      const parts = sent.split(/[，、；,;]/);
+      for (let c = parts.length - 1; c >= 0 && !who; c--) who = castFind(m, parts[c], true);
+    } else {
+      const after = (s.slice(end).match(/^[^。！？!?「]*/) || [''])[0];
+      who = castFind(m, after, true);
+    }
+    if (!who) who = inBlock || (q === 0 && (st.open || st.prev)) || null;
+    if (who && who !== st.last) { st.prev = st.last; st.last = who; }
+    inBlock = who;
+    cuts.push([q, end, who ? m.role(who) : 'u']);
+    st.open = closed ? null : who;
+  }
+  if (!cuts.length) { st.prev = null; st.open = null; return null; }
+  // 切成 [角色, 起, 迄]；只有標點的旁白片段併進前一片（不然會送一個「，」去念）
+  const parts = []; let at = 0;
+  for (const [a, b, r] of cuts) { if (a > at) parts.push(['n', at, a]); parts.push([r, a, b]); at = b; }
+  if (at < s.length) parts.push(['n', at, s.length]);
+  const out = [];
+  for (const p of parts) {
+    const empty = p[0] === 'n' && !/[\p{L}\p{N}]/u.test(s.slice(p[1], p[2]));
+    const last = out[out.length - 1];
+    if (last && (empty || last[0] === p[0])) last[2] = p[2];
+    else out.push(p.slice());
+  }
+  if (out.length > 1 && out[0][0] === 'n' && !/[\p{L}\p{N}]/u.test(s.slice(out[0][1], out[0][2]))) { out[1][1] = 0; out.shift(); }
+  return out.map(([r, a, b]) => [r, b - a]);
+}
+// 一章的每一段：標題、空段落不切；跨段落的狀態從章首重來
+function chapterSegs(texts, heads) {
+  const m = castMatcher(), st = { last: null, prev: null, open: null }, hs = new Set(heads || []);
+  return texts.map((t, k) => !t || hs.has(k) ? null : castSegs(t, st, m));
+}
+
 function chapterBlocks(c) {
   if (!c.html) { try { c.html = sanitize(c.render()); } catch { c.html = ''; } }
   const tpl = document.createElement('template'); tpl.innerHTML = c.html;
@@ -2211,12 +2432,18 @@ function chapterBlocks(c) {
   const blocks = [...tpl.content.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,pre,blockquote,tr')]
     .filter(el => !el.querySelector('p,li,pre,tr,h1,h2,h3,h4,h5,h6'));
   const silent = silentFlags(blocks);
-  return {
-    blocks: blocks.map((el, k) => speechText(el, silent[k])),
-    heads: blocks.map((el, k) => isHead(el) ? k : -1).filter(k => k >= 0),
+  const texts = blocks.map((el, k) => speechText(el, silent[k]));
+  const heads = blocks.map((el, k) => isHead(el) ? k : -1).filter(k => k >= 0);
+  const out = {
+    blocks: texts, heads,
     pre: preGaps(blocks) // App 1.5 起照這個在段落前插靜音（1× 的毫秒數，App 自己依語速縮）
   };
+  // App 1.13 起：每段的旁白／對白切法 [[角色, 字數], …]，App 照 cast 的聲音配置換聲音；舊 App 不認得就照舊念
+  if (castActive()) out.segs = chapterSegs(texts, heads);
+  return out;
 }
+// 送給 App 的聲音配置：雲端、手機語音各一份（App 依當下用哪一種挑）
+const castPayload = () => castActive() ? { cloud: castConfig('cloud'), device: castConfig('device') } : null;
 function nativeSleepArg() {
   if (T.stopAtChEnd) return 'ch';
   return T.sleepAt ? String(Math.max(1, Math.round((T.sleepAt - Date.now()) / 60000))) : '0';
@@ -2225,7 +2452,8 @@ function nativeStart(b) {
   NATIVE.start(JSON.stringify({
     bookId: R.book.id, bookTitle: R.book.title,
     chapters: R.chapters.map(c => Object.assign({ title: c.title }, chapterBlocks(c))),
-    ch: R.ch, b: Math.max(0, b), rate: prefs.rate, cloudRate: prefs.cloudRate, volume: prefs.volume, voice: prefs.voice || '', sleep: nativeSleepArg()
+    ch: R.ch, b: Math.max(0, b), rate: prefs.rate, cloudRate: prefs.cloudRate, volume: prefs.volume, voice: prefs.voice || '', sleep: nativeSleepArg(),
+    cast: castPayload()
   }));
 }
 function nativeState() { try { return JSON.parse(NATIVE.getState()); } catch { return { active: false, playing: false }; } }
@@ -2252,6 +2480,20 @@ window.KBookNativeEvent = e => {
 };
 
 function blockText(i) { const el = R.blocks[i]; return el ? speechText(el, R.silent && R.silent[i]) : ''; }
+// 瀏覽器朗讀：一段切成 [{t: 文字, r: 角色（null＝旁白）}]；這本書沒有角色表、或關掉對白換聲音時全部是旁白
+function blockChunks(i) {
+  const text = blockText(i);
+  if (castActive()) {
+    if (!R.segs) R.segs = chapterSegs(R.blocks.map((_, k) => blockText(k)), R.blocks.map((el, k) => isHead(el) ? k : -1).filter(k => k >= 0));
+    const sg = R.segs[i];
+    if (sg) {
+      const out = []; let at = 0;
+      for (const [r, n] of sg) { const piece = text.slice(at, at + n); at += n; for (const t of chunksOf(piece)) out.push({ t, r: r === 'n' ? null : r }); }
+      return out;
+    }
+  }
+  return chunksOf(text).map(t => ({ t, r: null }));
+}
 function chunksOf(text) {
   if (!text) return [];
   const sentences = text.match(/[^。！？!?；;…]+[。！？!?；;…]*[」』”’"'）)]*|[。！？!?；;…]+/g) || [text];
@@ -2388,7 +2630,7 @@ function speakNext(g, cont) {
       if (R.ch < R.chapters.length - 1) { openChapter(R.ch + 1, { block: 0 }); T.b = 0; T.s = 0; T.chunks = null; continue; }
       ttsPause(); clearSpeaking(); toast('全書念完了'); return;
     }
-    if (!T.chunks) T.chunks = chunksOf(blockText(T.b));
+    if (!T.chunks) T.chunks = blockChunks(T.b);
     if (T.s < T.chunks.length) break;
     T.b++; T.s = 0; T.chunks = null;
   }
@@ -2397,10 +2639,13 @@ function speakNext(g, cont) {
   // 接著上一段念到新的一段：先停一下（換段、標題前後、換章長短不同；剛按播放的那段不停）
   const gap = cont && T.s === 0 ? gapMs((R.pre && R.pre[T.b]) || 0) : 0;
   if (gap > 0) { setTimeout(() => speakNext(g), gap); return; }
-  const u = new SpeechSynthesisUtterance(T.chunks[T.s]);
-  const v = currentVoice();
+  const c = T.chunks[T.s];
+  const u = new SpeechSynthesisUtterance(c.t);
+  let v = currentVoice(), pitch = 1;
+  // 對白：照「本機語音」那份聲音配置換聲音、音高（指定的聲音這台沒有就用旁白的）
+  if (c.r) { const e = castConfig('device')[c.r]; if (e) { pitch = e.p; if (e.v) v = T.voices.find(x => x.voiceURI === e.v) || v; } }
   if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'zh-TW';
-  u.rate = prefs.rate * cloudMul() * (head ? HEAD_RATE : 1); u.volume = prefs.volume; u.pitch = 1;
+  u.rate = prefs.rate * cloudMul() * (head ? HEAD_RATE : 1); u.volume = prefs.volume; u.pitch = pitch;
   u.onend = () => { if (g !== T.gen) return; T.errs = 0; T.s++; speakNext(g, true); };
   u.onerror = e => {
     if (g !== T.gen || e.error === 'interrupted' || e.error === 'canceled') return;
@@ -2676,6 +2921,7 @@ function wire() {
   $('#parenSel').value = prefs.paren;
   $('#parenSel').onchange = e => { prefs.paren = e.target.value; savePrefs(); speechRulesChanged(); };
   $('#btnPron').onclick = pronListDialog;
+  $('#btnCast').onclick = castDialog;
   // 選取文字 →「修正讀音」。按下去時選取可能已經被清掉，所以用選取當下記住的字
   document.addEventListener('selectionchange', onSelChange);
   const chip = $('#pronChip');
