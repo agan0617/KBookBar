@@ -513,7 +513,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.15';
+const WEB_VERSION = '2026.10.20';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -617,6 +617,7 @@ K書吧讀的是純文字書檔：**.md**（Markdown）或 **.txt**。叫 AI 寫
 - **標籤**：書檔開頭的 frontmatter 寫一行「tags: 遊戲, 日本史」，匯入後書架標題下會多一排標籤，點一個就只看那一類的書（再點一次回到全部）。沒寫的書按書卡的「⋯」→ 編輯，在「標籤」欄用逗號分隔填。
 - **搜尋**：書架標題下的搜尋框打書名、作者或標籤的任何一段，書架就只剩對得到的書；空白隔開多個詞要全部對到（例如「金庸 射鵰」）。搜尋找的是整個書架，不管上面選了哪個標籤或作者；清空就回到原本的篩選。電腦上在書架按「/」直接跳到搜尋框，只剩一本時按 Enter 就打開。
 - **作者**：標籤底下還有一排作者，有兩本以上的作者各一格，其他的收在「其他」。點一個只看那位作者的書，可以跟標籤一起用（例如「武俠」加「金庸」）。作者就是「作者：」那一行，不用另外打成標籤。
+- **系列**：同一套書（例如衛斯理）在 frontmatter 寫一行「series: 衛斯理」，或按書卡的「⋯」→ 編輯填「系列」。同系列的書共用一份讀音字典，人名念錯改一次整套都對。
 - **讀音**：frontmatter 裡的「pronounce:」列出朗讀容易念錯的詞，格式見〈給 AI 的格式〉。只影響朗讀，畫面上照樣是原文。
 - 也可以直接請 Claude 把寫好的書放上書架。
 
@@ -697,8 +698,8 @@ pronounce:
 - **定時停止**：15 到 60 分鐘，或念完這一章就停，適合睡前聽。選過的時間會記住，下次開始朗讀時自動套用。
 - 朗讀會**跳過程式碼區塊**，以及標題叫「參考資料」「參考文獻」「References」這類的整節（到下一個同級標題為止），正文裡的網址和 [4] 這種出處編號也不念；畫面上照樣看得到。
 - 念到**章名、小節標題**時，前後會各停一下、念得慢一點，聽得出那是標題不是內文；換段也會停一下，換章停最久，對話前後會留個空（App 要 1.5 以上，1.4 只有標題停頓）。語速調快時停頓跟著縮短。
-- **念錯字了**：選取念錯的詞，下方會出現「修正讀音」，輸入同音字（例如「重新」寫成「蟲新」），可以先**試聽**，再選「這本書」或「所有書」。畫面上照樣是原文，只有朗讀會換；正在念的話，存好會從這一段重新念。只選一個字會提醒你：那個字在書裡每次出現都會被換掉，最好選整個詞。
-- **讀音字典**：朗讀設定裡的「讀音字典…」可以一次看、一次改所有條目；書卡「⋯」→ 編輯也有這本書的讀音欄。書檔 frontmatter 的「pronounce:」也算，同一個詞以網頁上改的為準。字典存在書架上，每台裝置都一樣。
+- **念錯字了**：選取念錯的詞，下方會出現「修正讀音」，輸入同音字（例如「重新」寫成「蟲新」），可以先**試聽**，再選要套用到「這本書」「同系列」「同作者」或「所有書」（書有填系列、作者才會出現那兩格）。一般的詞（重新、重來）選所有書；人名選同系列或這本書。畫面上照樣是原文，只有朗讀會換；正在念的話，存好會從這一段重新念。只選一個字會提醒你：那個字在書裡每次出現都會被換掉，最好選整個詞。
+- **讀音字典**：朗讀設定裡的「讀音字典…」可以一次看、一次改這本書、同系列、同作者、所有書四份字典；書卡「⋯」→ 編輯也有這本書的讀音欄。書檔 frontmatter 的「pronounce:」算在「這本書」裡，同一個詞以網頁上改的為準。好幾份都寫了同一個詞時，越具體的優先：這本書 → 系列 → 作者 → 所有書。字典存在書架上，每台裝置都一樣。
 - **場景分隔**：整段只有符號的（例如「＊＊＊」）不念，換成停久一點。
 - **表格、一行一行的段落**：表格一列的欄位之間、段落裡的換行處（詩、歌詞、地址）會停一下；中文旁邊的半形標點（, . ? ! : ;）當全形念，中文字之間多出來的空格不算。
 - **符號和數字**：破折號、刪節號念成停頓；「2.5×」念「2.5 倍」、「3×4」念「3 乘 4」、「3～5」念「3 到 5」；「II」「IV」這類羅馬數字念成中文數字；「網頁／App」的斜線念成停頓。
@@ -748,9 +749,10 @@ function parseBook(text, format) {
 }
 
 /* ───────── 讀音字典 ─────────
-   朗讀前把念錯的詞換成同音字，畫面上照樣是原文。三層，後面的蓋前面：
-   所有書共用（library.json 的 pronounce）→ 書檔 frontmatter 的 pronounce → 這本書在網頁上修的（書目的 pronounce）。
-   念法跟原文一樣＝這條不換（用來取消 frontmatter 或共用字典裡的某一條）。 */
+   朗讀前把念錯的詞換成同音字，畫面上照樣是原文。五層，後面的蓋前面（越具體越優先）：
+   所有書共用（library.json 的 pronounce）→ 同一位作者（pronounceByAuthor[作者]）→ 同一個系列（pronounceBySeries[書目的 series]）
+   → 書檔 frontmatter 的 pronounce → 這本書在網頁上修的（書目的 pronounce）。
+   念法跟原文一樣＝這條不換（用來取消上面幾層裡的某一條）。 */
 const PRON_SEP = /\s*(?:=|＝|→|->|：|:)\s*/;
 function pronPair(line) {
   const s = String(line).replace(/^\s*-\s*/, '').trim();
@@ -780,12 +782,21 @@ function compilePron(dict) {
   return s => s.replace(re, m => dict[m]);
 }
 const globalPron = () => normPron(GH.lib && GH.lib.pronounce);
+const groupPron = (key, name) => name ? normPron(((GH.lib && GH.lib[key]) || {})[name]) : {};
+const authorPron = name => groupPron('pronounceByAuthor', name);
+const seriesPron = name => groupPron('pronounceBySeries', name);
+const bookSeries = b => String((b && b.series) || '').trim();
+// 書目可能剛同步換過（例如別台裝置改了系列），以書架上最新的那筆為準
+const curBook = b => (b && S.books.find(x => x.id === b.id)) || b;
 const bookEdits = id => normPron((S.books.find(b => b.id === id) || {}).pronounce);
 const fmPron = id => normPron(((parsedCache.get(id) || {}).meta || {}).pronounce);
-// 這本書自己的字典（不含共用的）：frontmatter ＋ 網頁上修的
+// 這本書自己的字典（不含上面幾層）：frontmatter ＋ 網頁上修的
 const bookPron = id => Object.assign(fmPron(id), bookEdits(id));
 function refreshPron() {
-  R.pron = !R.book ? (s => s) : compilePron(Object.assign(globalPron(), R.book.builtin ? {} : bookPron(R.book.id)));
+  if (!R.book) { R.pron = s => s; return; }
+  const b = curBook(R.book);
+  R.pron = compilePron(R.book.builtin ? globalPron()
+    : Object.assign(globalPron(), authorPron(bookAuthor(b)), seriesPron(bookSeries(b)), bookPron(b.id)));
 }
 // 網頁上修的要存成「跟 frontmatter 不一樣的部分」：frontmatter 有、這裡刪掉的記成「念原文」
 function editsFor(id, dict) {
@@ -1411,7 +1422,7 @@ function normTags(v) {
 const bookTags = b => Array.isArray(b.tags) ? b.tags : [];
 const NO_TAG = '__none';
 const OTHER_AUTHOR = '__other';
-const bookAuthor = b => String(b.author || '').trim();
+const bookAuthor = b => String((b && b.author) || '').trim();
 
 async function importFiles(fileList) {
   if (!canWrite()) { toast('這個檢視沒有寫入權限'); return; }
@@ -1464,6 +1475,9 @@ async function addOne(text, format, fallbackTitle, forcedTitle, forcedAuthor) {
   // 檔頭 tags: 遊戲, 日本史 → 書目的 tags；沒寫就不帶（取代舊版時保留原本的標籤）
   const tags = normTags(parsed.meta.tags ?? parsed.meta.tag);
   if (tags.length) meta.tags = tags;
+  // 檔頭 series: 衛斯理 → 書目的 series（同系列共用讀音字典）；沒寫就不帶，取代舊版時保留原本的
+  const series = String(parsed.meta.series || '').trim().slice(0, 40);
+  if (series) meta.series = series;
   const dup = S.books.find(b => b.title === meta.title);
   let how = 'new';
   if (dup) {
@@ -1553,6 +1567,7 @@ function editDialog(book) {
     <form id="editForm">
       <label for="eTitle">書名</label><input type="text" id="eTitle" value="${esc(book.title)}" required>
       <label for="eAuthor">作者</label><input type="text" id="eAuthor" value="${esc(book.author || '')}">
+      <label for="eSeries">系列</label><input type="text" id="eSeries" value="${esc(bookSeries(book))}" placeholder="同系列的書共用一份讀音字典，例：衛斯理">
       <label for="eTags">標籤</label><input type="text" id="eTags" value="${esc(bookTags(book).join(', '))}" placeholder="用逗號分隔，例：遊戲, 日本史">
       <label for="ePron">讀音（只有朗讀會換，一行一條）</label><textarea id="ePron" class="pron-list" disabled placeholder="正在讀取…"></textarea>
       <p class="hint">${fmtChars(book.chars)} · ${book.chapters || 0} 章 · ${book.format === 'txt' ? '純文字' : 'Markdown'} · 加入於 ${new Date(book.addedAt || Date.now()).toLocaleDateString('zh-TW')}</p>
@@ -1575,8 +1590,9 @@ function editDialog(book) {
   p.querySelector('#editForm').addEventListener('submit', async e => {
     e.preventDefault();
     const title = $('#eTitle').value.trim().slice(0, 120), author = $('#eAuthor').value.trim().slice(0, 80), tags = normTags($('#eTags').value);
+    const series = $('#eSeries').value.trim().slice(0, 40);
     if (!title) return;
-    const patch = { title, author, tags };
+    const patch = { title, author, tags, series: series || undefined };
     if (pronReady) { const d = editsFor(book.id, pronFromText($('#ePron').value)); patch.pronounce = Object.keys(d).length ? d : undefined; }
     closeModal();
     try { await S.backend.update(book.id, patch); toast('已儲存'); } catch (err) { toast(errMsg(err), 5000); }
@@ -1608,36 +1624,60 @@ function previewSay(text) {
   if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'zh-TW';
   u.rate = prefs.rate; u.volume = prefs.volume; synth.speak(u);
 }
-// 存一條讀音。say 是 null（或跟原文一樣）＝改回念原文；scope：'book' 這本書、'all' 所有書
+// 讀音字典上面三層在 library.json 裡的位置：所有書是 pronounce，作者、系列是 { 名字: 字典 }
+const PRON_GROUP = { author: 'pronounceByAuthor', series: 'pronounceBySeries' };
+function libLayer(lib, scope, name) {
+  if (scope === 'all') return normPron(lib.pronounce);
+  const m = lib[PRON_GROUP[scope]];
+  return name && m && typeof m === 'object' ? normPron(m[name]) : {};
+}
+function setLibLayer(lib, scope, name, d) {
+  if (scope === 'all') { if (Object.keys(d).length) lib.pronounce = d; else delete lib.pronounce; return; }
+  if (!name) return;
+  const key = PRON_GROUP[scope], m = lib[key] && typeof lib[key] === 'object' && !Array.isArray(lib[key]) ? lib[key] : {};
+  if (Object.keys(d).length) m[name] = d; else delete m[name];
+  if (Object.keys(m).length) lib[key] = m; else delete lib[key];
+}
+const scopeLabel = (scope, b) => scope === 'all' || !b ? '所有書' : scope === 'author' ? `作者「${bookAuthor(b)}」` : scope === 'series' ? `系列「${bookSeries(b)}」` : `《${b.title}》`;
+// 存一條讀音。say 是 null（或跟原文一樣）＝改回念原文；scope：'book' 這本書、'series' 同系列、'author' 同作者、'all' 所有書
 async function savePron(word, say, scope) {
   if (say === word) say = null;
-  const id = R.book && !R.book.builtin ? R.book.id : null, title = R.book ? R.book.title : '';
+  const book = R.book && !R.book.builtin ? curBook(R.book) : null, id = book ? book.id : null;
   if (!id) scope = 'all';
+  const names = { all: '', author: bookAuthor(book), series: bookSeries(book) };
+  if ((scope === 'author' || scope === 'series') && !names[scope]) scope = 'book';
   const fmHas = id ? word in fmPron(id) : false;
   await GH.mutate('lib', lib => {
-    const all = normPron(lib.pronounce);
-    if (scope === 'all') { if (say == null) delete all[word]; else all[word] = say; }
-    if (Object.keys(all).length) lib.pronounce = all; else delete lib.pronounce;
+    if (scope !== 'book') {
+      const d = libLayer(lib, scope, names[scope]);
+      if (say == null) delete d[word]; else d[word] = say;
+      setLibLayer(lib, scope, names[scope], d);
+    }
     const b = id && lib.books.find(x => x.id === id);
     if (b) {
+      // 這本書的條目蓋過上面幾層，所以要看別層還有沒有這個詞，決定這本書要不要記一筆
+      const has = k => k === 'fm' ? fmHas : word in libLayer(lib, k, names[k]);
+      const below = { all: ['author', 'series', 'fm'], author: ['series', 'fm'], series: ['fm'], book: [] }[scope];
       const d = normPron(b.pronounce);
-      // 這本書的條目蓋過共用的：存成所有書時，只有 frontmatter 也寫了這個詞才要在這本書記一筆，不然 frontmatter 那條會蓋掉
-      if (scope === 'all') { if (fmHas) d[word] = say == null ? word : say; else delete d[word]; }
-      else if (say != null) d[word] = say;
-      else if (fmHas || word in all) d[word] = word;
+      if (say == null) { if (['all', 'author', 'series', 'fm'].some(has)) d[word] = word; else delete d[word]; } // 改回原文：別層還有就記「念原文」
+      else if (scope === 'book' || below.some(has)) d[word] = say; // 比存的那層更具體的層也寫了：這本書記一筆，不然會被蓋掉
       else delete d[word];
       if (Object.keys(d).length) b.pronounce = d; else delete b.pronounce;
     }
     return lib;
-  }, `讀音：「${word}」${say == null ? '念原文' : '念成「' + say + '」'}（${scope === 'all' ? '所有書' : '《' + title + '》'}）`);
+  }, `讀音：「${word}」${say == null ? '念原文' : '念成「' + say + '」'}（${scopeLabel(scope, book)}）`);
 }
 function pronDialog(word) {
   if (!canWrite()) { toast('要連上書架（右上角顯示「已同步」）才能存讀音', 4000); return; }
-  const builtin = !R.book || R.book.builtin;
-  const mine = builtin ? {} : bookPron(R.book.id), all = globalPron();
-  const inBook = word in mine && mine[word] !== word, inAll = word in all && all[word] !== word && !(word in mine);
-  let scope = builtin || (!inBook && inAll) ? 'all' : 'book';
-  const cur = inBook ? mine[word] : inAll ? all[word] : '';
+  const builtin = !R.book || R.book.builtin, book = builtin ? null : curBook(R.book);
+  const author = bookAuthor(book), series = bookSeries(book);
+  // 現在是哪一層在管這個詞（越具體越優先）；那一層就是預設要存的地方
+  const lay = { book: book ? bookPron(book.id) : {}, series: seriesPron(series), author: authorPron(author), all: globalPron() };
+  const at = ['book', 'series', 'author', 'all'].find(k => word in lay[k]);
+  const cur = at && lay[at][word] !== word ? lay[at][word] : '';
+  let scope = builtin ? 'all' : cur ? at : 'book';
+  const scopeBtn = (v, label, off) => `<button type="button" data-v="${v}"${off ? ' disabled' : ''}>${label}</button>`;
+  const groups = [series && '系列：' + esc(series), author && '作者：' + esc(author)].filter(Boolean).join(' · ');
   pausedWhile(resume => {
     const p = openModal(`<h3>「${esc(word)}」怎麼念？</h3>
       <form id="pronForm">
@@ -1645,7 +1685,8 @@ function pronDialog(word) {
         <input type="text" id="pronSay" value="${esc(cur || word)}" autocomplete="off" autofocus>
         <p class="hint">例如「薩爾那加」寫成「撒爾那加」、「重新」寫成「蟲新」。畫面上照樣是原文，只有朗讀會換。${word.length === 1 ? `<br><b>只選了一個字</b>：書裡每個「${esc(word)}」都會被換掉，建議選整個詞（例如選「重新」而不是「重」）。` : ''}</p>
         <label>套用到</label>
-        <div class="seg" id="pronScope"><button type="button" data-v="book"${builtin ? ' disabled' : ''}>這本書</button><button type="button" data-v="all">所有書</button></div>
+        <div class="seg" id="pronScope">${scopeBtn('book', '這本書', builtin)}${series ? scopeBtn('series', '同系列') : ''}${author ? scopeBtn('author', '同作者') : ''}${scopeBtn('all', '所有書')}</div>
+        ${groups ? `<p class="hint">${groups}</p>` : ''}
         <div class="actions">
           ${canPreview() ? '<button class="btn left" type="button" data-try>試聽</button>' : ''}
           ${cur ? '<button class="btn" type="button" data-rm>改回原文</button>' : ''}
@@ -1667,32 +1708,39 @@ function pronDialog(word) {
     p.querySelector('#pronForm').addEventListener('submit', e => { e.preventDefault(); save(p.querySelector('#pronSay').value.trim().slice(0, 60) || null); });
   });
 }
-// 整份字典一次看、一次改：這本書的、所有書共用的
+// 整份字典一次看、一次改：這本書的、同系列、同作者、所有書共用的
 function pronListDialog() {
   if (!canWrite()) { toast('要連上書架（右上角顯示「已同步」）才能改讀音字典', 4000); return; }
-  const book = R.book && !R.book.builtin ? R.book : null;
+  const book = R.book && !R.book.builtin ? curBook(R.book) : null;
+  const author = bookAuthor(book), series = bookSeries(book);
+  const area = (id, label, d) => `<label for="${id}">${label}</label><textarea id="${id}" class="pron-list">${esc(pronToText(d))}</textarea>`;
   pausedWhile(resume => {
     const p = openModal(`<h3>讀音字典</h3>
       <p class="m-body">朗讀時把左邊的詞念成右邊（用同音字寫），畫面上照樣是原文。一行一條，例如「薩爾那加 = 撒爾那加」。閱讀時選取文字，下方會出現「修正讀音」，也可以一條一條加。</p>
       <form id="pronListForm">
-        ${book ? `<label for="plBook">這本書《${esc(book.title)}》</label><textarea id="plBook" class="pron-list">${esc(pronToText(bookPron(book.id)))}</textarea>` : ''}
-        <label for="plAll">所有書共用（多音字、常見念錯的詞）</label><textarea id="plAll" class="pron-list">${esc(pronToText(globalPron()))}</textarea>
-        <p class="hint">同一個詞兩邊都有時，用這本書的。${canPreview() ? '選取文字後可以先試聽。' : ''}</p>
+        ${book ? area('plBook', `這本書《${esc(book.title)}》`, bookPron(book.id)) : ''}
+        ${series ? area('plSeries', `系列「${esc(series)}」的書共用`, seriesPron(series)) : ''}
+        ${author ? area('plAuthor', `作者「${esc(author)}」的書共用`, authorPron(author)) : ''}
+        ${area('plAll', '所有書共用（多音字、常見念錯的詞）', globalPron())}
+        <p class="hint">同一個詞好幾層都有時，越具體的優先：這本書 → 系列 → 作者 → 所有書。${canPreview() ? '選取文字後可以先試聽。' : ''}</p>
         <div class="actions"><button class="btn" type="button" data-x>取消</button><button class="btn primary" type="submit">儲存</button></div>
       </form>`);
     p.querySelector('[data-x]').onclick = closeModal;
     p.querySelector('#pronListForm').addEventListener('submit', async e => {
       e.preventDefault();
-      const all = pronFromText(p.querySelector('#plAll').value);
-      const mine = book ? editsFor(book.id, pronFromText(p.querySelector('#plBook').value)) : null;
+      const val = id => pronFromText(p.querySelector('#' + id).value);
+      const all = val('plAll'), au = author ? val('plAuthor') : null, se = series ? val('plSeries') : null;
+      const mine = book ? editsFor(book.id, val('plBook')) : null;
       modalResolve = null; closeModal();
       try {
         await GH.mutate('lib', lib => {
-          if (Object.keys(all).length) lib.pronounce = all; else delete lib.pronounce;
+          setLibLayer(lib, 'all', '', all);
+          if (au) setLibLayer(lib, 'author', author, au);
+          if (se) setLibLayer(lib, 'series', series, se);
           const b = book && lib.books.find(x => x.id === book.id);
           if (b) { if (Object.keys(mine).length) b.pronounce = mine; else delete b.pronounce; }
           return lib;
-        }, `讀音字典：${book ? '《' + book.title + '》與' : ''}所有書共用`);
+        }, `讀音字典：${[book && '《' + book.title + '》', series && '系列「' + series + '」', author && '作者「' + author + '」', '所有書共用'].filter(Boolean).join('、')}`);
         speechRulesChanged(); toast('讀音字典已儲存');
       } catch (err) { toast(errMsg(err), 5000); }
       resume();
