@@ -520,7 +520,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.20.2';
+const WEB_VERSION = '2026.10.20.3';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -2306,10 +2306,10 @@ const speechText = (el, silent) => silent || isBreak(el) ? '' : speakable(R.pron
 const CAST_ROLES = [['m', '男'], ['f', '女'], ['om', '老男'], ['of', '老女'], ['b', '少年'], ['g', '少女'], ['u', '其他']]; // 其他＝認不出是誰說的
 const CAST_KEY = Object.fromEntries(CAST_ROLES.map(([k, l]) => [l, k]));
 const CAST_DEFAULT = {
-  // 男角用雲逸（多語言聲音講台灣國語；Ken 的旁白用雲哲，2026-10-20 指定）
+  // 男角雲希、女角曉曉、少女曉伊、老女曉秋（Ken 的旁白用雲哲，2026-10-20 指定；App 1.14 起清單才有曉曉、曉伊、曉秋）
   cloud: {
-    m: { v: 'azure:zh-CN-YunyiMultilingualNeural', p: 1 }, om: { v: 'azure:zh-CN-YunyiMultilingualNeural', p: 0.9 }, b: { v: 'azure:zh-CN-YunyiMultilingualNeural', p: 1.1 },
-    f: { v: 'azure:zh-TW-HsiaoChenNeural', p: 1 }, of: { v: 'azure:zh-TW-HsiaoChenNeural', p: 0.9 }, g: { v: 'azure:zh-TW-HsiaoYuNeural', p: 1.05 }, u: { v: '', p: 1 }
+    m: { v: 'azure:zh-CN-YunxiNeural', p: 1 }, om: { v: 'azure:zh-CN-YunxiNeural', p: 0.9 }, b: { v: 'azure:zh-CN-YunxiNeural', p: 1.1 },
+    f: { v: 'azure:zh-CN-XiaoxiaoNeural', p: 1 }, of: { v: 'azure:zh-CN-XiaoqiuNeural', p: 1 }, g: { v: 'azure:zh-CN-XiaoyiNeural', p: 1 }, u: { v: '', p: 1 }
   },
   // 手機、瀏覽器的聲音每台不同，預設只用音高分男女，聲音要在設定裡自己指定
   device: {
