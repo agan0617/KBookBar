@@ -101,3 +101,15 @@
 | `progress.json` | `{"_slots":[{"id","dev","name","ch","b","pct","t","at"},…],"<書 id>":{"ch","b","pct","t","at"}}`：`_slots` 是進度格清單（新的在前，最多 99 格；`id` 書 id、`dev` 裝置 id、`name` 裝置名），`ch` 章（從 0 起）、`b` 章內第幾段、`pct` 0～1、`t` 章名、`at` 毫秒時間戳；每本書外層那筆是它最新的一格，格子全掉出清單的書也還留著。舊格式（每本書 `devs` 裡各裝置一份）第一次存進度時會自動換算成格子 |
 
 `chars`、`chapters` 要跟頁面的算法一致，不然頁面會顯示錯的字數與章數。
+
+## 版權
+
+Copyright © 2026 agan0617. All rights reserved. 保留所有權利，詳見 [LICENSE](LICENSE)。
+
+使用的第三方素材（依各自授權）：
+
+- **marked 12.0.2**：Markdown 轉 HTML（cdnjs 載入），MIT（https://marked.js.org/）
+- **DOMPurify 3.1.6**：清理 HTML 防 XSS（cdnjs 載入），MPL-2.0 OR Apache-2.0（https://github.com/cure53/DOMPurify）
+- **霞鶩文楷 TC（LXGW WenKai TC）**：閱讀字體（Google Fonts），SIL OFL 1.1（https://github.com/lxgw/LxgwWenkaiTC）
+- **Noto Sans TC、Noto Serif TC**：介面與閱讀字體（Google Fonts），SIL OFL 1.1（https://fonts.google.com/noto）
+- **GitHub REST API**：讀寫使用者的私有書架 repo，GitHub 服務條款（https://docs.github.com/rest）
