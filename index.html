@@ -530,7 +530,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.28.3';
+const WEB_VERSION = '2026.10.28.4';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1364,6 +1364,8 @@ function renderLibrary() {
     const p = getProgress(b.id);
     const pct = p ? Math.round((p.pct || 0) * 100) : 0;
     const chs = b.chapters || 0;
+    // 做過語音優化（有角色表，含同系列共用的）就在字數後面標 🎙
+    const vo = !b.builtin && Object.keys(bookCast(b)).length ? ' · <span class="vo" title="已做語音優化（讀音＋角色表）">🎙</span>' : '';
     if (listMode) {
       const where = p && typeof p.ch === 'number' ? slotWhere(p) + ' · ' : '';
       return `<article class="brow">
@@ -1371,7 +1373,7 @@ function renderLibrary() {
         ${coverHTML(b, false, false)}
         <div class="brow-body">
           <h3 class="book-title">${esc(b.title)}</h3>
-          <div class="brow-meta">${fmtChars(b.chars)}${chs ? ` · ${chs} 章` : ''}</div>
+          <div class="brow-meta">${fmtChars(b.chars)}${chs ? ` · ${chs} 章` : ''}${vo}</div>
           ${p ? `<div class="brow-prog"><span>${where}${pct >= 100 ? '讀完' : pct + '%'}</span><div class="bar"><i style="width:${pct}%"></i></div></div>` : '<div class="brow-prog"><span>還沒讀</span></div>'}
         </div>
       </button>
@@ -1383,7 +1385,7 @@ function renderLibrary() {
       <div>
         <h3 class="book-title">${esc(b.title)}</h3>
       </div>
-      <div class="book-meta"><span>${fmtChars(b.chars)}${chs ? ` · ${chs} 章` : ''}</span>${!b.builtin && writable ? `<button class="icon more" type="button" data-edit="${esc(b.id)}" aria-label="編輯《${esc(b.title)}》">${I.more}</button>` : ''}</div>
+      <div class="book-meta"><span>${fmtChars(b.chars)}${chs ? ` · ${chs} 章` : ''}${vo}</span>${!b.builtin && writable ? `<button class="icon more" type="button" data-edit="${esc(b.id)}" aria-label="編輯《${esc(b.title)}》">${I.more}</button>` : ''}</div>
       <div class="pct"><div class="bar"><i style="width:${pct}%"></i></div><span>${p ? (pct >= 100 ? '讀完' : pct + '%') : '未讀'}</span></div>
       <div class="last"${p && p.at ? ` title="${esc(new Date(p.at).toLocaleString('zh-TW'))}"` : ''}>${p && p.at ? '上次閱讀 ' + fmtAgo(p.at) : '還沒讀過'}</div>
     </article>`;
