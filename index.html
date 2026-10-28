@@ -240,8 +240,10 @@ html:has(#reader:not([hidden]))::-webkit-scrollbar{display:none}
 /* 直排（Ken 2026-10-28 要求）：.rmain 改 vertical-rl，一行由上往下、一行一行往左排；整頁改成左右捲，章首在最右邊。
    .rmain 高度固定一個畫面，寬度隨內容長；頂端列、播放面板佔掉的高度用上下 padding 讓開。
    這裡全部寫實體方向（top/left…）：logical 屬性在直排裡會轉向，跟上面橫排的規則混著寫容易蓋錯邊 */
-html:has(#reader.vert:not([hidden])){overflow-y:hidden}
-#reader.vert .rmain{writing-mode:vertical-rl;text-orientation:mixed;box-sizing:border-box;height:100vh;height:100dvh;min-width:100%;width:max-content;padding:calc(76px + env(safe-area-inset-top,0px)) 24px 64px 40px}
+html:has(#reader.vert:not([hidden])){overflow:hidden}
+/* .rmain 自己當左右捲的容器、寬度固定一個畫面（整頁變寬的話手機上固定的頂端列會跟著變寬） */
+#reader.vert .rmain{writing-mode:vertical-rl;text-orientation:mixed;box-sizing:border-box;height:100vh;height:100dvh;width:100vw;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;padding:calc(76px + env(safe-area-inset-top,0px)) 24px 64px 40px}
+#reader.vert .rmain::-webkit-scrollbar{display:none}
 @media (min-width:700px){#reader.vert .rmain{padding-right:48px;padding-left:64px}}
 #reader.vert.with-player .rmain{padding-bottom:230px}
 body.ttsbar-on #reader.vert .rmain{padding-bottom:calc(64px + var(--ttsbar-h))}
@@ -565,7 +567,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.28.5';
+const WEB_VERSION = '2026.10.28.7';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1379,8 +1381,8 @@ function renderLibrary() {
     const devNames = [...new Map(pickList.map(x => [x.dev, slotDev(x)])).values()];
     cont.innerHTML = `<button class="continue-card" type="button" data-slot="0">
       ${coverHTML(tb, false)}
-      <div style="min-width:0"><span class="eyebrow">繼續閱讀 · ${slotDev(top)}</span><h2>${esc(tb.title)}</h2>
-      <p>${slotWhere(top)} · 已讀 ${pct}% · ${fmtAgo(top.at)}</p>
+      <div style="min-width:0"><span class="eyebrow">繼續閱讀 · ${slotDev(top)} · ${pct}%</span><h2>${esc(tb.title)}</h2>
+      <p>${slotWhere(top)} · ${fmtAgo(top.at)}</p>
       <div class="bar"><i style="width:${pct}%"></i></div></div>
       <span class="go">${I.arrow}</span></button>` +
       (pickList.length > 1 ? `<div class="dev-list"><button class="dev-row" type="button" data-slots>
@@ -2011,15 +2013,16 @@ function renderToc() {
   $('#tocList').innerHTML = R.chapters.map((c, k) => `<li><button type="button" data-ch="${k}"><span class="n">${k + 1}</span><span>${esc(c.title)}</span></button></li>`).join('');
 }
 function barH() { return $('#rbar').offsetHeight; }
-/* 捲動軸：橫排沿 Y 往下捲；直排（vertical-rl）沿 X 往左捲，章首在整頁最右邊（scrollX 最大）。
+/* 捲動軸：橫排是整頁沿 Y 往下捲；直排是 .rmain 自己沿 X 往左捲（vertical-rl 的捲動容器，章首 scrollLeft＝0、往後讀變負的）。
+   直排不讓整頁左右捲：手機瀏覽器整頁變寬時，固定在頂端的工具列會跟著變寬、要左右滑才看得全（Ken 2026-10-28 回報）。
    pos 一律是「從章首往後讀了多遠」的 px（0 起算、往後變大），跟捲動、段落位置有關的地方都經過這裡，不各自判斷直橫；
    lead／tail 是段落的前緣、後緣離畫面起點（橫排＝上緣、直排＝右緣）多遠，startInset／endInset 是兩端被頂端列、播放面板蓋住的長度 */
 const vert = () => R.view === 'reader' && !!prefs.vertical;
+const rmain = () => $('#reader .rmain');
 const AX = {
-  vmax: null,   // 直排時最後一次對位用的 max：內容變寬（字型載入、圖片）時拿來把畫面留在同一段，見 initRail
-  max() { const d = document.documentElement; return vert() ? d.scrollWidth - innerWidth : d.scrollHeight - innerHeight; },
-  pos() { return vert() ? AX.max() - scrollX : scrollY; },
-  len() { return vert() ? innerWidth : innerHeight; },
+  max() { const d = document.documentElement, m = rmain(); return vert() ? m.scrollWidth - m.clientWidth : d.scrollHeight - innerHeight; },
+  pos() { return vert() ? -rmain().scrollLeft : scrollY; },
+  len() { return vert() ? rmain().clientWidth : innerHeight; },
   lead(r) { return vert() ? innerWidth - r.right : r.top; },
   tail(r) { return vert() ? innerWidth - r.left : r.bottom; },
   size(r) { return vert() ? r.width : r.height; },
@@ -2028,7 +2031,7 @@ const AX = {
   endInset() { return vert() ? 0 : bottomInset(); },
   to(p, behavior = 'auto') {
     const v = Math.max(0, p);
-    if (vert()) { const m = AX.max(); AX.vmax = m; window.scrollTo({ left: Math.max(0, m - v), behavior }); }
+    if (vert()) rmain().scrollTo({ left: -Math.min(v, AX.max()), behavior });
     else window.scrollTo({ top: v, behavior });
   }
 };
@@ -2086,8 +2089,6 @@ function initRail() {
   // 換章、改字級、圖片載入都會改變長度；播放面板、朗讀進度列開關會改變直排捲軸的位置
   new ResizeObserver(() => {
     if (R.view !== 'reader') return;
-    // 直排的章首在最右邊：內容變寬時 scrollX 不動，畫面會滑到別段——照變寬的量補回去，留在原本讀的地方
-    if (vert()) { const m = AX.max(); if (AX.vmax != null && m !== AX.vmax) window.scrollBy(m - AX.vmax, 0); AX.vmax = m; }
     updateRail();
   }).observe($('#article'));
   const ro = new ResizeObserver(() => { if (R.view === 'reader' && vert()) updateRail(); });
@@ -2100,7 +2101,7 @@ function onWheel(e) {
   if (e.target.closest && e.target.closest('.sheet,.drawer,.modal,.player,.ttsbar,pre,table')) return;
   e.preventDefault();
   const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? innerWidth : 1;
-  window.scrollBy({ left: -e.deltaY * k, behavior: 'auto' });
+  rmain().scrollBy({ left: -e.deltaY * k, behavior: 'auto' });
 }
 function bookPct(b) {
   const n = R.chapters.length; if (!n) return 0;
@@ -2239,7 +2240,6 @@ function applyPrefs() {
   rd.style.setProperty('--measure', WIDTHS[prefs.width] || WIDTHS.m);
   rd.classList.toggle('indent', !!prefs.indent);
   rd.classList.toggle('vert', !!prefs.vertical);
-  if (!vert()) AX.vmax = null;
   if (R.view === 'reader' && prefs.theme !== 'auto') document.body.dataset.rtheme = prefs.theme;
   else delete document.body.dataset.rtheme;
   syncAa();
@@ -3019,6 +3019,7 @@ function wire() {
     if (blk && canSpeak() && T.playing) ttsStart(+blk.dataset.b);
   });
   window.addEventListener('scroll', onScroll, { passive: true });
+  rmain().addEventListener('scroll', onScroll, { passive: true });   // 直排時捲的是 .rmain
   window.addEventListener('wheel', onWheel, { passive: false });
   initRail();
 
