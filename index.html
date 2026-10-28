@@ -202,12 +202,12 @@ select{height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--line)
 /* 右邊常駐的捲軸（手機瀏覽器／App 的原生捲軸停下就隱藏，Ken 2026-10-28 要一直顯示）；拖得動、點軌道跳過去 */
 html:has(#reader:not([hidden])){scrollbar-width:none}
 html:has(#reader:not([hidden]))::-webkit-scrollbar{display:none}
-.rscroll{position:fixed;top:calc(env(safe-area-inset-top,0px) + 56px);bottom:calc(8px + env(safe-area-inset-bottom,0px));right:0;width:18px;z-index:19;touch-action:none}
-body.ttsbar-on .rscroll{bottom:calc(8px + var(--ttsbar-h))}
+/* 大小、位置照 Android WebView 原生捲軸：整個畫面高、貼右邊、寬 4px、把手最短 8px；摸得到的範圍比看得到的寬 */
+.rscroll{position:fixed;top:0;bottom:0;right:0;width:18px;z-index:33;touch-action:none}
 .rscroll[hidden]{display:none}
-.rscroll i{position:absolute;left:0;right:0;top:0;height:40px;touch-action:none;cursor:grab}
-.rscroll i::after{content:"";position:absolute;top:0;bottom:0;right:0;width:6px;border-radius:3px;background:var(--faint);opacity:.75;transition:width .15s,opacity .15s}
-.rscroll.drag i::after,.rscroll i:hover::after{width:8px;opacity:1}
+.rscroll i{position:absolute;left:0;right:0;top:0;height:8px;touch-action:none;cursor:grab}
+.rscroll i::after{content:"";position:absolute;top:0;bottom:0;right:0;width:4px;border-radius:2px;background:var(--faint);opacity:.75;transition:opacity .15s}
+.rscroll.drag i::after,.rscroll i:hover::after{opacity:1}
 .rmain{padding-top:calc(76px + env(safe-area-inset-top,0px));padding-bottom:64px;padding-inline:20px}
 @media (min-width:700px){.rmain{padding-inline:40px}}
 #reader.with-player .rmain{padding-bottom:230px}
@@ -530,7 +530,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.28.2';
+const WEB_VERSION = '2026.10.28.3';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1996,7 +1996,7 @@ function updateRail() {
   const rail = $('#rscroll'), max = document.documentElement.scrollHeight - innerHeight;
   rail.hidden = max <= 0;
   if (max <= 0) return;
-  const h = rail.clientHeight, th = Math.max(40, Math.round(h * innerHeight / (max + innerHeight)));
+  const h = rail.clientHeight, th = Math.max(8, Math.round(h * innerHeight / (max + innerHeight)));
   const t = $('#rscrollThumb');
   t.style.height = th + 'px';
   t.style.transform = `translateY(${Math.round((h - th) * Math.min(1, scrollY / max))}px)`;
