@@ -567,7 +567,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.28.7';
+const WEB_VERSION = '2026.10.29.1';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1039,8 +1039,11 @@ const GH = {
   ref() { return 'ref=' + encodeURIComponent(this.conf.branch); },
   async getJson(path) {
     try {
-      const j = await (await this.api(`contents/${encPath(SHELF_DIR + path)}?${this.ref()}`)).json();
-      return { data: JSON.parse(b64dec(j.content)), sha: j.sha };
+      const url = `contents/${encPath(SHELF_DIR + path)}?${this.ref()}`;
+      const j = await (await this.api(url)).json();
+      // 超過 1MB 的檔 GitHub 不回 content（encoding 是 none），要另外用 raw 格式抓
+      const text = j.encoding === 'base64' && j.content ? b64dec(j.content) : await (await this.api(url, { headers: { Accept: 'application/vnd.github.raw+json' } })).text();
+      return { data: JSON.parse(text), sha: j.sha };
     } catch (e) { if (e.status === 404) return null; throw e; }
   },
   async sha(path) {
