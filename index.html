@@ -567,7 +567,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.29.1';
+const WEB_VERSION = '2026.10.29.2';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1405,8 +1405,8 @@ function renderLibrary() {
     const p = getProgress(b.id);
     const pct = p ? Math.round((p.pct || 0) * 100) : 0;
     const chs = b.chapters || 0;
-    // 做過語音優化（有角色表，含同系列共用的）就在字數後面標 🎙
-    const vo = !b.builtin && Object.keys(bookCast(b)).length ? ' · <span class="vo" title="已做語音優化（讀音＋角色表）">🎙</span>' : '';
+    // 做過語音優化就在字數後面標 🎙：書目記了 voicedAt（沒有對白、做不了角色表的散文、史書也算），或有角色表（含同系列共用的）
+    const vo = !b.builtin && (b.voicedAt || Object.keys(bookCast(b)).length) ? ' · <span class="vo" title="已做語音優化">🎙</span>' : '';
     if (listMode) {
       const where = p && typeof p.ch === 'number' ? slotWhere(p) + ' · ' : '';
       return `<article class="brow">
