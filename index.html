@@ -234,6 +234,11 @@ html:has(#reader:not([hidden]))::-webkit-scrollbar{display:none}
 .article td,.article th{border:1px solid var(--line);padding:.35em .6em}
 .article a{color:var(--accent)}
 .article .speaking{background:var(--accent-soft);box-shadow:0 0 0 .28em var(--accent-soft);border-radius:3px}
+/* 捲動後標出剛剛讀到的地方（Ken 2026-10-29 要求）：一條細線停在原本畫面邊緣那一行，幾秒後淡掉 */
+.article{position:relative}
+.article .rmark{position:absolute;left:-.6em;right:-.6em;height:2px;margin-top:-1px;border-radius:1px;background:var(--accent);opacity:0;pointer-events:none;transition:opacity .6s}
+.article .rmark.on{opacity:.6;transition:opacity .15s}
+#reader.vert .article .rmark{left:auto;right:auto;top:-.6em;bottom:-.6em;width:2px;height:auto;margin:0 0 0 -1px}
 .article .loading,.article .err{text-align:center;color:var(--muted);text-indent:0;margin-top:30vh}
 .chnav{max-width:var(--measure);margin:3.2em auto 0;padding-top:1.4em;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 
@@ -567,7 +572,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.29.2';
+const WEB_VERSION = '2026.10.29.3';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -741,6 +746,10 @@ pronounce:
 電腦上的快捷鍵：← → 換章（直排時 ← 是下一章），+ − 調字級，P 朗讀或暫停，T 開目錄，Esc 關閉面板。
 
 上方工具列固定在頂端，不會自動收起；書名兩側的 « » 是上一章／下一章。
+
+**點畫面翻頁**：點畫面下半部往後翻一頁、上半部往前翻一頁（直排是點左半部往後、右半部往前），翻頁時保留兩行，接著讀不跳行。朗讀中點段落還是跳到那段念，不翻頁。
+
+**閱讀位置標記**：用手指滑、滾輪或翻頁捲過一段距離後，原本畫面最後一行（往回捲時是第一行）的位置會亮一條細線，幾秒後淡掉，眼睛照著它就找得回剛剛讀到哪裡。
 
 ## 朗讀
 點右上角的**耳機**，會從畫面上的段落開始念；再點一次就停。只有開始／停止，不會跳出任何面板。念到哪一段會標出來並自動捲動，章尾接著念下一章。
@@ -1986,6 +1995,7 @@ function openChapter(i, { block = 0 } = {}) {
   $('#reader').classList.remove('bars-hidden');
   // App 在背景念到換章時，這個 rAF 要等回到前景才跑；那時要捲到 App 最後念到的段（R.openBlock 會被朗讀事件更新），不是換章當下的第 0 段
   R.openBlock = block;
+  dropMark();
   requestAnimationFrame(() => {
     const blk = R.openBlock;
     if (blk > 0 && R.blocks[blk]) scrollToBlock(blk); else AX.to(0);
@@ -2105,6 +2115,76 @@ function onWheel(e) {
   e.preventDefault();
   const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? innerWidth : 1;
   rmain().scrollBy({ left: -e.deltaY * k, behavior: 'auto' });
+}
+/* 閱讀位置標記與點畫面翻頁（Ken 2026-10-29 回報：滑一下就忘了剛剛看到哪一段）。
+   手指一碰（或滾輪、鍵盤、拖捲軸、點畫面翻頁）先記下畫面兩端那一行的位置；捲完停下來移動超過四分之一個畫面，
+   就在往後讀時原本畫面最後一行的下緣、往回捲時原本第一行的上緣畫一條線，幾秒後淡掉。
+   只有使用者自己捲才畫：換章、朗讀跟讀的捲動不畫（openChapter 會清掉；朗讀中有念到哪段的標示，也不畫） */
+const lineH = () => prefs.fs * prefs.lh;
+// 畫面上讀的方向座標 lead 那一點所在的那一行：回傳那一行的前緣、後緣（同 AX.lead／tail 的座標），找不到回 null
+function lineBox(lead) {
+  const a = $('#article').getBoundingClientRect(), v = vert();
+  const x = v ? innerWidth - lead : a.left + a.width / 2, y = v ? a.top + Math.min(a.height / 2, 120) : lead;
+  let r = null;
+  try {
+    if (document.caretRangeFromPoint) r = document.caretRangeFromPoint(x, y);
+    else if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); if (p) { r = document.createRange(); r.setStart(p.offsetNode, p.offset); } }
+  } catch {}
+  if (!r || !$('#article').contains(r.startContainer)) return null;
+  const b = r.getBoundingClientRect(), s = AX.size(b);
+  if (!s) return null;
+  // 游標框只有字的高度，行距的空白平均分在上下：以字為中心、一個行高當這一行
+  const mid = AX.lead(b) + s / 2, h = lineH();
+  return { lead: mid - h / 2, tail: mid + h / 2 };
+}
+// 畫面最後一整行的後緣、第一整行的前緣（被邊緣切到一半的那行算沒看過）；用章首起算的距離存，捲動後還對得上
+function readEdges() {
+  const pos = AX.pos(), h = lineH(), end = AX.len() - AX.endInset(), start = AX.startInset();
+  let f = end, b = start;
+  const fb = lineBox(end - 2), bb = lineBox(start + 2);
+  if (fb) { const x = fb.tail <= end + 1 ? fb.tail : fb.lead; if (Math.abs(x - end) < 2 * h) f = x; }
+  if (bb) { const x = bb.lead >= start - 1 ? bb.lead : bb.tail; if (Math.abs(x - start) < 2 * h) b = x; }
+  return { pos, f: f + pos, b: b + pos, t: Date.now() };
+}
+const M = { at: null, timer: 0, fade: 0 };
+function armMark() {
+  if (R.view !== 'reader' || M.timer) return;   // 還在捲（慣性）就沿用一開始記的
+  M.at = readEdges();
+}
+function dropMark() {
+  M.at = null; clearTimeout(M.timer); M.timer = 0;
+  const m = $('#article .rmark'); if (m) m.classList.remove('on');
+}
+// onScroll 叫：剛碰過才算使用者捲的，停下 180ms 才畫
+function markScroll() {
+  if (!M.at || (!M.timer && Date.now() - M.at.t > 1500)) return;
+  clearTimeout(M.timer);
+  M.timer = setTimeout(showMark, 180);
+}
+function showMark() {
+  const at = M.at; M.at = null; M.timer = 0;
+  if (!at || R.view !== 'reader' || T.playing) return;
+  const pos = AX.pos(), d = pos - at.pos;
+  if (Math.abs(d) < AX.len() / 4) return;
+  const lead = (d > 0 ? at.f : at.b) - pos;
+  if (lead < AX.startInset() + 6 || lead > AX.len() - AX.endInset() - 6) return;   // 捲太遠，那一行已經不在畫面上
+  const art = $('#article'), a = art.getBoundingClientRect();
+  let m = art.querySelector('.rmark');
+  if (!m) { m = document.createElement('div'); m.className = 'rmark'; m.setAttribute('aria-hidden', 'true'); art.appendChild(m); }
+  if (vert()) { m.style.top = ''; m.style.left = (innerWidth - lead - a.left) + 'px'; }
+  else { m.style.left = ''; m.style.top = (lead - a.top) + 'px'; }
+  m.classList.add('on');
+  clearTimeout(M.fade);
+  M.fade = setTimeout(() => m.classList.remove('on'), 2500);
+}
+/* 點畫面翻一頁：往後時原本最後兩行移到最上面、往回時原本最前兩行移到最下面，接著讀不跳行 */
+function pageTurn(dir) {
+  armMark();
+  const e = readEdges(), pos = AX.pos(), h = lineH(), see = AX.len() - AX.startInset() - AX.endInset();
+  let to = dir > 0 ? e.f - 2 * h - AX.startInset() : e.b + 2 * h - (AX.len() - AX.endInset());
+  // 字級大到一個畫面放不下幾行時，至少往前走半個畫面
+  if (dir > 0 ? to < pos + see / 2 : to > pos - see / 2) to = pos + dir * see * 0.8;
+  AX.to(Math.min(to, AX.max()), reduced ? 'auto' : 'smooth');
 }
 function bookPct(b) {
   const n = R.chapters.length; if (!n) return 0;
@@ -2231,7 +2311,7 @@ let lastY = 0;
 function onScroll() {
   if (R.view !== 'reader') return;
   // 頂端列固定不收（Ken 2026-09-23 指定）
-  updateReadBar(); schedulePos();
+  updateReadBar(); schedulePos(); markScroll();
 }
 
 /* 偏好套用 */
@@ -3013,17 +3093,28 @@ function wire() {
   $('#btnPrev').onclick = $('#btnPrevCh').onclick = () => goChapter(R.ch - 1);
   $('#btnNext').onclick = $('#btnNextCh').onclick = () => goChapter(R.ch + 1);
   $('#tocList').addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (!b) return; closePanels(); goChapter(+b.dataset.ch); });
-  $('#article').addEventListener('click', e => {
-    if (e.target.closest('a')) return;
+  rmain().addEventListener('click', e => {
+    if (e.target.closest('a,button,pre,table')) return;
     const sel = window.getSelection && String(window.getSelection());
     if (sel) return;
-    const blk = e.target.closest('[data-b]');
-    // 正在念時點段落＝跳到那段接著念；沒在念就不理（免得翻書時手指碰到就開始念）
-    if (blk && canSpeak() && T.playing) ttsStart(+blk.dataset.b);
+    // 正在念時點段落＝跳到那段接著念（不翻頁）
+    if (T.playing) {
+      const blk = e.target.closest('[data-b]');
+      if (blk && canSpeak()) ttsStart(+blk.dataset.b);
+      return;
+    }
+    // 沒在念：點畫面翻一頁。橫排點下半部往後、上半部往前；直排往左讀，點左半部往後、右半部往前
+    const v = vert(), c = v ? e.clientX : e.clientY;
+    const mid = v ? innerWidth / 2 : (AX.startInset() + innerHeight - AX.endInset()) / 2;
+    pageTurn(v ? (c < mid ? 1 : -1) : (c > mid ? 1 : -1));
   });
   window.addEventListener('scroll', onScroll, { passive: true });
   rmain().addEventListener('scroll', onScroll, { passive: true });   // 直排時捲的是 .rmain
   window.addEventListener('wheel', onWheel, { passive: false });
+  // 使用者自己開始捲：先記下畫面兩端那一行，捲完畫閱讀位置標記
+  rmain().addEventListener('touchstart', armMark, { passive: true });
+  window.addEventListener('wheel', () => { if (R.view === 'reader') armMark(); }, { passive: true });
+  $('#rscroll').addEventListener('pointerdown', armMark);
   initRail();
 
   // 設定
@@ -3088,6 +3179,7 @@ function wire() {
       && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !$('#shelfSearch').hidden) { $('#searchInput').focus(); e.preventDefault(); return; }
     if (R.view !== 'reader' || !$('#modal').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if (/^(PageDown|PageUp| |ArrowDown|ArrowUp|Home|End)$/.test(e.key)) armMark();
     // 直排：往左是往後讀，← 換下一章、→ 回上一章；頁面不會上下捲，空白鍵／PageUp／PageDown／↑↓／Home／End 自己換成左右捲
     const v = vert();
     if (v) {
