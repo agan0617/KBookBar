@@ -572,7 +572,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.10.29.3';
+const WEB_VERSION = '2026.10.30.1';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -661,6 +661,13 @@ const WIDTHS = { s: '30em', m: '38em', l: '48em', xl: '60em' };
 const storedPrefs = LS.get('prefs', null);
 const prefs = Object.assign({ fs: matchMedia('(max-width: 600px)').matches ? 19 : 21, lh: 1.9, font: 'serif', theme: 'auto', width: 'm', indent: true, rate: 1, voice: '', cloudRate: 0.8, volume: 1, sleep: '0', sort: 'recent', tag: '', author: '', paren: 'gloss', view: 'grid', castOn: true, castVoices: null, vertical: false }, storedPrefs || {});
 const savePrefs = () => LS.set('prefs', prefs);
+// 2026-10-30 對白換聲音改成男女老少各一個聲音（CAST_DEFAULT，Ken 指定照建議全換）：存過設定的裝置，雲端那份整份
+// 改回新預設（手機語音那份不動）；旁白若是雲澤紀錄片就換雲健紀錄片，雲澤讓給老男，不然老人講話跟旁白分不出來
+if ((prefs.castRev || 0) < 2) {
+  if (prefs.castVoices) delete prefs.castVoices.cloud;
+  if (prefs.voice === 'azure:zh-CN-YunzeNeural#documentary-narration') prefs.voice = 'azure:zh-CN-YunjianNeural#documentary-narration';
+  prefs.castRev = 2; savePrefs();
+}
 
 /* ───────── 內建說明書 ───────── */
 const GUIDE_ID = '__guide';
@@ -2514,10 +2521,11 @@ const speechText = (el, silent) => silent || isBreak(el) ? '' : speakable(R.pron
 const CAST_ROLES = [['m', '男'], ['f', '女'], ['om', '老男'], ['of', '老女'], ['b', '少年'], ['g', '少女'], ['u', '其他']]; // 其他＝認不出是誰說的
 const CAST_KEY = Object.fromEntries(CAST_ROLES.map(([k, l]) => [l, k]));
 const CAST_DEFAULT = {
-  // 男角都用雲希、女角都用曉伊，年紀靠音高分（老 0.9、一般 1、少年少女 1.1）；Ken 的旁白用雲澤紀錄片風格（2026-10-20 指定；曉伊要 App 1.14）
+  // 男女老少各用一個聲音、音高不調（2026-10-30 Ken 指定；原本男角全雲希、女角全曉伊，老少靠音高分，聽起來像同一個人壓嗓子）：
+  // 男雲楓、老男雲澤、少年雲希；女曉涵、老女曉睿、少女曉伊。雲澤讓給老男，Ken 的旁白改雲健紀錄片風格（見 prefs 底下的 castRev）
   cloud: {
-    m: { v: 'azure:zh-CN-YunxiNeural', p: 1 }, om: { v: 'azure:zh-CN-YunxiNeural', p: 0.9 }, b: { v: 'azure:zh-CN-YunxiNeural', p: 1.1 },
-    f: { v: 'azure:zh-CN-XiaoyiNeural', p: 1 }, of: { v: 'azure:zh-CN-XiaoyiNeural', p: 0.9 }, g: { v: 'azure:zh-CN-XiaoyiNeural', p: 1.1 }, u: { v: '', p: 1 }
+    m: { v: 'azure:zh-CN-YunfengNeural', p: 1 }, om: { v: 'azure:zh-CN-YunzeNeural', p: 1 }, b: { v: 'azure:zh-CN-YunxiNeural', p: 1 },
+    f: { v: 'azure:zh-CN-XiaohanNeural', p: 1 }, of: { v: 'azure:zh-CN-XiaoruiNeural', p: 1 }, g: { v: 'azure:zh-CN-XiaoyiNeural', p: 1 }, u: { v: '', p: 1 }
   },
   // 手機、瀏覽器的聲音每台不同，預設只用音高分男女，聲音要在設定裡自己指定
   device: {
