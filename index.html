@@ -588,7 +588,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.11.10.2';
+const WEB_VERSION = '2026.11.10.3';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -785,7 +785,7 @@ pronounce:
 
 設定存在各自的裝置上：手機可以用大字、電腦用小字，互不影響。
 
-電腦上的快捷鍵：← → 換章（直排時 ← 是下一章），+ − 調字級，P 朗讀或暫停，T 開目錄，Esc 關閉面板。
+電腦上的快捷鍵：Enter 下一頁，← → 換章（直排時 ← 是下一章），+ − 調字級，P 朗讀或暫停，T 開目錄，Esc 關閉面板。
 
 上方工具列固定在頂端，不會自動收起；書名兩側的 « » 是上一章／下一章。
 
@@ -3220,6 +3220,8 @@ function wire() {
       && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !$('#shelfSearch').hidden) { $('#searchInput').focus(); e.preventDefault(); return; }
     if (R.view !== 'reader' || !$('#modal').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    // Enter＝下一頁，跟左下角的翻頁鈕一樣（Ken 2026-11-10 指定）；焦點停在工具列按鈕上也照樣翻頁，不觸發那顆按鈕
+    if (e.key === 'Enter' && !e.isComposing && !panelOpen()) { pageTurn(1); e.preventDefault(); return; }
     if (/^(PageDown|PageUp| |ArrowDown|ArrowUp|Home|End)$/.test(e.key)) armMark();
     // 直排：往左是往後讀，← 換下一章、→ 回上一章；頁面不會上下捲，空白鍵／PageUp／PageDown／↑↓／Home／End 自己換成左右捲
     const v = vert();
