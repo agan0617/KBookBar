@@ -292,6 +292,8 @@ body.ttsbar-on #reader.vert .pgnav{bottom:calc(30px + var(--ttsbar-h))}
 #reader.pg-right:not(.vert) .pgnav{flex-direction:row}
 /* 置中（Ken 2026-11-11 加，並改成預設）：畫面下方正中間，排法同靠左（上一頁在右，同日 Ken 要求對調） */
 #reader.pg-center .pgnav{left:50%;transform:translateX(-50%)}
+/* 不顯示（Ken 2026-11-11 加）：翻頁鈕整個藏起來，翻頁靠捲動或 Enter */
+#reader.pg-hide .pgnav{display:none}
 
 /* 目錄抽屜 */
 .scrim{position:fixed;inset:0;z-index:35;background:var(--scrim)}
@@ -521,6 +523,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
       <button type="button" data-v="left">靠左</button>
       <button type="button" data-v="center">置中</button>
       <button type="button" data-v="right">靠右</button>
+      <button type="button" data-v="hide">不顯示</button>
     </div>
   </div>
 </section>
@@ -603,7 +606,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.11.11.2';
+const WEB_VERSION = '2026.11.11.3';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -802,7 +805,7 @@ pronounce:
 - **直排**：改成由上往下、由右往左的直式排版，左右滑動翻讀（電腦上滾輪一樣能捲）。
 - **字體**：明體、黑體、楷體。
 - **底色**：跟隨系統、白、米、綠、夜。
-- **翻頁鈕**：下方置中（預設）、左下角或右下角。
+- **翻頁鈕**：下方置中（預設）、左下角、右下角，或不顯示。
 
 設定存在各自的裝置上：手機可以用大字、電腦用小字，互不影響。
 
@@ -810,7 +813,7 @@ pronounce:
 
 上方工具列固定在頂端，不會自動收起；書名兩側的 « » 是上一章／下一章。
 
-**翻頁鈕**：畫面下方正中間兩顆並排的大圓鈕（閱讀設定的「翻頁鈕」可改成靠左、靠右），↑ 往前翻一頁、↓ 往後翻一頁；置中與靠左時 ↑ 在右邊、靠右時 ↑ 在左邊（直排時左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
+**翻頁鈕**：畫面下方正中間兩顆並排的大圓鈕（閱讀設定的「翻頁鈕」可改成靠左、靠右或不顯示），↑ 往前翻一頁、↓ 往後翻一頁；置中與靠左時 ↑ 在右邊、靠右時 ↑ 在左邊（直排時左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
 
 **閱讀位置標記**：用手指滑、滾輪或翻頁捲過一段距離後，原本畫面最後一行（往回捲時是第一行）的位置會亮一條細線，幾秒後淡掉，眼睛照著它就找得回剛剛讀到哪裡。
 
@@ -2390,6 +2393,7 @@ function applyPrefs() {
   rd.classList.toggle('vert', !!prefs.vertical);
   rd.classList.toggle('pg-right', prefs.pgSide === 'right');
   rd.classList.toggle('pg-center', prefs.pgSide === 'center');
+  rd.classList.toggle('pg-hide', prefs.pgSide === 'hide');
   if (R.view === 'reader' && prefs.theme !== 'auto') document.body.dataset.rtheme = prefs.theme;
   else delete document.body.dataset.rtheme;
   syncAa();
@@ -2402,7 +2406,7 @@ function syncAa() {
   $$('#themeSw .sw').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === prefs.theme)));
   $('#indentChk').checked = !!prefs.indent;
   $('#vertChk').checked = !!prefs.vertical;
-  $$('#pgSideSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === (['right', 'center'].includes(prefs.pgSide) ? prefs.pgSide : 'left'))));
+  $$('#pgSideSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === (['right', 'center', 'hide'].includes(prefs.pgSide) ? prefs.pgSide : 'left'))));
 }
 function setPref(k, v) {
   const keep = R.view === 'reader' ? (T.playing ? T.b : currentBlock()) : 0;
