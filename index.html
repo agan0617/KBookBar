@@ -275,6 +275,18 @@ body.ttsbar-on #reader.vert.with-player .rmain{padding-bottom:calc(230px + var(-
 #reader.vert .rscroll i{top:0;bottom:0;left:0;right:auto;width:8px;height:auto}
 #reader.vert .rscroll i::after{top:auto;left:0;right:0;bottom:0;width:auto;height:4px}
 
+/* 翻頁鈕（Ken 2026-11-10：點畫面翻頁太容易誤觸，改成右下角兩顆小圓鈕）。橫排上下疊：上一頁在上；
+   直排往左讀，改成左右排、箭頭轉 90°：下一頁在左。讓開右邊的捲軸（直排是底下的橫條）、朗讀進度列；播放面板開著時收起來 */
+.pgnav{position:fixed;right:24px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:31;display:flex;flex-direction:column;gap:10px}
+.pgnav button{width:40px;height:40px;padding:0;border-radius:50%;border:1px solid var(--line);background:color-mix(in srgb,var(--raised) 82%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--muted);display:grid;place-items:center;box-shadow:0 2px 10px -4px rgba(0,0,0,.35);cursor:pointer;opacity:.85}
+.pgnav button:active{opacity:1;color:var(--ink)}
+.pgnav svg{width:20px;height:20px}
+#reader.vert .pgnav{flex-direction:row-reverse;bottom:calc(30px + env(safe-area-inset-bottom,0px))}
+#reader.vert .pgnav svg{transform:rotate(90deg)}
+body.ttsbar-on .pgnav{bottom:calc(16px + var(--ttsbar-h))}
+body.ttsbar-on #reader.vert .pgnav{bottom:calc(30px + var(--ttsbar-h))}
+#reader.with-player .pgnav{display:none}
+
 /* 目錄抽屜 */
 .scrim{position:fixed;inset:0;z-index:35;background:var(--scrim)}
 .drawer{position:fixed;top:0;bottom:0;left:0;z-index:40;width:min(88vw,380px);display:flex;flex-direction:column;background:var(--raised);box-shadow:var(--shadow);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);animation:slideL .22s ease}
@@ -434,6 +446,10 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
       <button class="btn primary" id="btnNext" type="button">下一章</button>
     </nav>
   </main>
+  <div class="pgnav" id="pgnav">
+    <button type="button" id="btnPgPrev" aria-label="上一頁" title="上一頁"></button>
+    <button type="button" id="btnPgNext" aria-label="下一頁" title="下一頁"></button>
+  </div>
 </div>
 
 <div class="scrim" id="scrim" hidden></div>
@@ -572,7 +588,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.11.04.2';
+const WEB_VERSION = '2026.11.10.1';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -602,6 +618,8 @@ const I = {
   vol: SVG('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor" stroke="none"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/>'),
   chPrev: SVG('<path d="M12 6l-6 6 6 6M18.5 6l-6 6 6 6"/>'),
   chNext: SVG('<path d="M12 6l6 6-6 6M5.5 6l6 6-6 6"/>'),
+  pgUp: SVG('<path d="M6 15l6-6 6 6"/>'),
+  pgDown: SVG('<path d="M6 9l6 6 6-6"/>'),
   grid: SVG('<rect x="4" y="4" width="6.5" height="6.5" rx="1.2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.2"/>'),
   list: SVG('<path d="M9 6h11M9 12h11M9 18h11"/><rect x="3.5" y="4.5" width="3" height="3" rx=".8" fill="currentColor" stroke="none"/><rect x="3.5" y="10.5" width="3" height="3" rx=".8" fill="currentColor" stroke="none"/><rect x="3.5" y="16.5" width="3" height="3" rx=".8" fill="currentColor" stroke="none"/>')
 };
@@ -771,7 +789,7 @@ pronounce:
 
 上方工具列固定在頂端，不會自動收起；書名兩側的 « » 是上一章／下一章。
 
-**點畫面翻頁**：點畫面下半部往後翻一頁、上半部往前翻一頁（直排是點左半部往後、右半部往前），翻頁時保留兩行，接著讀不跳行。朗讀中點段落還是跳到那段念，不翻頁。
+**翻頁鈕**：右下角兩顆小圓鈕，上面那顆往前翻一頁、下面那顆往後翻一頁（直排時左右排，左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
 
 **閱讀位置標記**：用手指滑、滾輪或翻頁捲過一段距離後，原本畫面最後一行（往回捲時是第一行）的位置會亮一條細線，幾秒後淡掉，眼睛照著它就找得回剛剛讀到哪裡。
 
@@ -3038,6 +3056,7 @@ function wire() {
   $('#btnBack').innerHTML = I.back; $('#btnToc').innerHTML = I.toc; $('#btnTts').innerHTML = I.phones;
   $('#btnTtsSet').innerHTML = I.tune; $('#volIcon').innerHTML = I.vol;
   $('#btnPrevCh').innerHTML = I.chPrev; $('#btnNextCh').innerHTML = I.chNext;
+  $('#btnPgPrev').innerHTML = I.pgUp; $('#btnPgNext').innerHTML = I.pgDown;
   $$('[data-close]').forEach(b => { b.innerHTML = I.close; b.addEventListener('click', closePanels); });
   $('#pPrev').innerHTML = I.prev; $('#pNext').innerHTML = I.next; $('#pPlay').innerHTML = I.play;
   $('#pTune').innerHTML = I.tune; $('#pClose').innerHTML = I.close;
@@ -3122,17 +3141,14 @@ function wire() {
     if (e.target.closest('a,button,pre,table')) return;
     const sel = window.getSelection && String(window.getSelection());
     if (sel) return;
-    // 正在念時點段落＝跳到那段接著念（不翻頁）
+    // 正在念時點段落＝跳到那段接著念。翻頁改用右下角的翻頁鈕（Ken 2026-11-10：點畫面翻頁太容易誤觸）
     if (T.playing) {
       const blk = e.target.closest('[data-b]');
       if (blk && canSpeak()) ttsStart(+blk.dataset.b);
-      return;
     }
-    // 沒在念：點畫面翻一頁。橫排點下半部往後、上半部往前；直排往左讀，點左半部往後、右半部往前
-    const v = vert(), c = v ? e.clientX : e.clientY;
-    const mid = v ? innerWidth / 2 : (AX.startInset() + innerHeight - AX.endInset()) / 2;
-    pageTurn(v ? (c < mid ? 1 : -1) : (c > mid ? 1 : -1));
   });
+  $('#btnPgPrev').onclick = () => pageTurn(-1);
+  $('#btnPgNext').onclick = () => pageTurn(1);
   window.addEventListener('scroll', onScroll, { passive: true });
   rmain().addEventListener('scroll', onScroll, { passive: true });   // 直排時捲的是 .rmain
   window.addEventListener('wheel', onWheel, { passive: false });
