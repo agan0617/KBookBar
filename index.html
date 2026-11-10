@@ -290,9 +290,8 @@ body.ttsbar-on #reader.vert .pgnav{bottom:calc(30px + var(--ttsbar-h))}
 /* 閱讀設定「翻頁鈕：靠左／靠右」（Ken 2026-11-10 要求可切換）；靠右時讓開右邊的捲軸 */
 #reader.pg-right .pgnav{left:auto;right:24px}
 #reader.pg-right:not(.vert) .pgnav{flex-direction:row}
-/* 置中（Ken 2026-11-11 加，並改成預設）：畫面下方正中間，上一頁在左 */
+/* 置中（Ken 2026-11-11 加，並改成預設）：畫面下方正中間，排法同靠左（上一頁在右，同日 Ken 要求對調） */
 #reader.pg-center .pgnav{left:50%;transform:translateX(-50%)}
-#reader.pg-center:not(.vert) .pgnav{flex-direction:row}
 
 /* 目錄抽屜 */
 .scrim{position:fixed;inset:0;z-index:35;background:var(--scrim)}
@@ -604,7 +603,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.11.11';
+const WEB_VERSION = '2026.11.11.2';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -811,7 +810,7 @@ pronounce:
 
 上方工具列固定在頂端，不會自動收起；書名兩側的 « » 是上一章／下一章。
 
-**翻頁鈕**：畫面下方正中間兩顆並排的大圓鈕（閱讀設定的「翻頁鈕」可改成靠左、靠右），↑ 往前翻一頁、↓ 往後翻一頁；置中與靠右時 ↑ 在左邊、靠左時 ↑ 在右邊（直排時左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
+**翻頁鈕**：畫面下方正中間兩顆並排的大圓鈕（閱讀設定的「翻頁鈕」可改成靠左、靠右），↑ 往前翻一頁、↓ 往後翻一頁；置中與靠左時 ↑ 在右邊、靠右時 ↑ 在左邊（直排時左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
 
 **閱讀位置標記**：用手指滑、滾輪或翻頁捲過一段距離後，原本畫面最後一行（往回捲時是第一行）的位置會亮一條細線，幾秒後淡掉，眼睛照著它就找得回剛剛讀到哪裡。
 
