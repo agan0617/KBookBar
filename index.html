@@ -275,9 +275,9 @@ body.ttsbar-on #reader.vert.with-player .rmain{padding-bottom:calc(230px + var(-
 #reader.vert .rscroll i{top:0;bottom:0;left:0;right:auto;width:8px;height:auto}
 #reader.vert .rscroll i::after{top:auto;left:0;right:0;bottom:0;width:auto;height:4px}
 
-/* 翻頁鈕（Ken 2026-11-10：點畫面翻頁太容易誤觸，改成右下角兩顆小圓鈕）。橫排上下疊：上一頁在上；
-   直排往左讀，改成左右排、箭頭轉 90°：下一頁在左。讓開右邊的捲軸（直排是底下的橫條）、朗讀進度列；播放面板開著時收起來 */
-.pgnav{position:fixed;right:24px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:31;display:flex;flex-direction:column;gap:10px}
+/* 翻頁鈕（Ken 2026-11-10：點畫面翻頁太容易誤觸，改成左下角兩顆小圓鈕；同日從右下角移到左下角）。橫排上下疊：上一頁在上；
+   直排往左讀，改成左右排、箭頭轉 90°：下一頁在左。讓開直排底下的橫條捲軸、朗讀進度列；播放面板開著時收起來 */
+.pgnav{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:31;display:flex;flex-direction:column;gap:10px}
 .pgnav button{width:40px;height:40px;padding:0;border-radius:50%;border:1px solid var(--line);background:color-mix(in srgb,var(--raised) 82%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--muted);display:grid;place-items:center;box-shadow:0 2px 10px -4px rgba(0,0,0,.35);cursor:pointer;opacity:.85}
 .pgnav button:active{opacity:1;color:var(--ink)}
 .pgnav svg{width:20px;height:20px}
@@ -588,7 +588,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.11.10.1';
+const WEB_VERSION = '2026.11.10.2';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -789,7 +789,7 @@ pronounce:
 
 上方工具列固定在頂端，不會自動收起；書名兩側的 « » 是上一章／下一章。
 
-**翻頁鈕**：右下角兩顆小圓鈕，上面那顆往前翻一頁、下面那顆往後翻一頁（直排時左右排，左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
+**翻頁鈕**：左下角兩顆小圓鈕，上面那顆往前翻一頁、下面那顆往後翻一頁（直排時左右排，左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
 
 **閱讀位置標記**：用手指滑、滾輪或翻頁捲過一段距離後，原本畫面最後一行（往回捲時是第一行）的位置會亮一條細線，幾秒後淡掉，眼睛照著它就找得回剛剛讀到哪裡。
 
@@ -3141,7 +3141,7 @@ function wire() {
     if (e.target.closest('a,button,pre,table')) return;
     const sel = window.getSelection && String(window.getSelection());
     if (sel) return;
-    // 正在念時點段落＝跳到那段接著念。翻頁改用右下角的翻頁鈕（Ken 2026-11-10：點畫面翻頁太容易誤觸）
+    // 正在念時點段落＝跳到那段接著念。翻頁改用左下角的翻頁鈕（Ken 2026-11-10：點畫面翻頁太容易誤觸）
     if (T.playing) {
       const blk = e.target.closest('[data-b]');
       if (blk && canSpeak()) ttsStart(+blk.dataset.b);
