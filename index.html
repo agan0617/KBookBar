@@ -591,13 +591,14 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/t2cn.js"></script>
 <script>
 (() => {
 'use strict';
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.11.10.4';
+const WEB_VERSION = '2026.11.10.5';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1744,10 +1745,10 @@ function speechRulesChanged() {
 const canPreview = () => NATIVE ? typeof NATIVE.preview === 'function' : !!synth;
 function previewSay(text) {
   const t = speakable(text); if (!t) return;
-  if (NATIVE) { try { NATIVE.preview(t, prefs.voice || '', prefs.rate, prefs.volume); } catch {} return; }
+  if (NATIVE) { try { NATIVE.preview(voiceIsCn(prefs.voice) ? toCn(t) : t, prefs.voice || '', prefs.rate, prefs.volume); } catch {} return; }
   if (!T.voices.length) loadVoices();
   synth.cancel();
-  const u = new SpeechSynthesisUtterance(t), v = currentVoice();
+  const v = currentVoice(), u = new SpeechSynthesisUtterance(v && voiceIsCn(v.voiceURI) ? toCn(t) : t);
   if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'zh-TW';
   u.rate = prefs.rate * cloudMul(); u.volume = prefs.volume; synth.speak(u);
 }
@@ -1882,12 +1883,14 @@ function castPreview(kind, role, v, p) {
   if (NATIVE) {
     // 手機語音那份的「同旁白」：旁白是雲端語音時，手機語音接手用的是手機預設
     const voice = v || (kind === 'device' && String(prefs.voice || '').startsWith('azure:') ? '' : prefs.voice || '');
-    try { if (typeof NATIVE.previewPitch === 'function') NATIVE.previewPitch(text, voice, prefs.rate, prefs.volume, p); else NATIVE.preview(text, voice, prefs.rate, prefs.volume); } catch {}
+    const say = voiceIsCn(voice) ? toCn(text) : text;
+    try { if (typeof NATIVE.previewPitch === 'function') NATIVE.previewPitch(say, voice, prefs.rate, prefs.volume, p); else NATIVE.preview(say, voice, prefs.rate, prefs.volume); } catch {}
     return;
   }
   if (!synth) return;
   synth.cancel();
-  const u = new SpeechSynthesisUtterance(text), x = (v && T.voices.find(o => o.voiceURI === v)) || currentVoice();
+  const x = (v && T.voices.find(o => o.voiceURI === v)) || currentVoice();
+  const u = new SpeechSynthesisUtterance(x && voiceIsCn(x.voiceURI) ? toCn(text) : text);
   if (x) { u.voice = x; u.lang = x.lang; } else u.lang = 'zh-TW';
   u.rate = prefs.rate * cloudMul(); u.volume = prefs.volume; u.pitch = p; synth.speak(u);
 }
@@ -2534,6 +2537,32 @@ const SPK = {
   // 中文字之間、全形標點旁邊的空白拿掉（來源檔多出來的空格會讓引擎多停一下或斷錯詞）；中英文之間的留著
   cjkSpace: new RegExp(`(?<=[${CJKX}])\\s+(?=[${CJKX}])`, 'g')
 };
+/* 大陸（zh-CN）語音念繁體字常照冷僻讀音念：「什麼」的麼念 mó、「認為」的為念 wèi、「那種」的種念 zhòng
+   （2026-11-10 Ken 聽《岩田先生》回報）。所以要給大陸語音念的文字先轉簡體（OpenCC 台灣→大陸，只轉字、不轉用語），
+   畫面照樣顯示繁體；台灣語音、手機語音照原文送。讀音字典照舊先套，再轉簡體。
+   字數一定保持一樣（App 照字數切旁白／對白）：轉出來長度不同的字（少數罕用字會變成擴充區的字）保留原字 */
+let t2cn = null;
+function toCn(s) {
+  if (!s) return s;
+  if (!t2cn) { try { if (window.OpenCC) t2cn = OpenCC.Converter({ from: 'tw', to: 'cn' }); } catch {} if (!t2cn) return s; }
+  const o = t2cn(s);
+  if (o.length === s.length) return o;
+  let out = '';
+  for (const ch of s) { const c = t2cn(ch); out += c.length === ch.length ? c : ch; }
+  return out;
+}
+// 這個聲音是不是大陸語音：App 的雲端語音看 id（azure:zh-CN-…），其他看語系（App 的手機語音、瀏覽器語音）
+let nativeVoiceLang = null;
+function voiceIsCn(id) {
+  if (!id) return false;
+  if (/^azure:/i.test(id)) return /^azure:zh-CN-/i.test(id);
+  let lang = '';
+  if (NATIVE) {
+    if (!nativeVoiceLang) { nativeVoiceLang = {}; try { for (const v of JSON.parse(NATIVE.getVoices()) || []) nativeVoiceLang[v.id] = v.lang; } catch {} }
+    lang = nativeVoiceLang[id] || '';
+  } else { const v = T.voices.find(x => x.voiceURI === id); lang = v ? v.lang : ''; }
+  return /^(zh|cmn)[-_](CN|Hans)/i.test(lang);
+}
 function speakable(s) {
   if (!s) return s;
   const paren = prefs.paren || 'gloss';
@@ -2703,7 +2732,25 @@ function chapterBlocks(c) {
   };
   // App 1.13 起：每段的旁白／對白切法 [[角色, 字數], …]，App 照 cast 的聲音配置換聲音；舊 App 不認得就照舊念
   if (castActive()) out.segs = chapterSegs(texts, heads);
+  out.blocks = nativeCnTexts(texts, out.segs);
   return out;
+}
+/* 送給 App 的文字：每一片看實際由哪個聲音念（旁白＝朗讀設定的語音，對白＝角色的聲音，「同旁白」就是旁白），
+   是大陸語音才轉簡體。App 選雲端還是手機那份聲音配置，跟 castDialog 的判斷一樣看旁白是不是雲端語音 */
+function nativeCnTexts(texts, segs) {
+  const narr = prefs.voice || '';
+  const conf = castActive() ? castConfig(narr.startsWith('azure:') ? 'cloud' : 'device') : null;
+  const cnOf = r => voiceIsCn(r === 'n' || !conf ? narr : (conf[r].v || narr));
+  const narrCn = cnOf('n');
+  if (!narrCn && !(conf && CAST_ROLES.some(([k]) => cnOf(k)))) return texts;
+  return texts.map((t, k) => {
+    if (!t) return t;
+    const sg = segs && segs[k];
+    if (!sg) return narrCn ? toCn(t) : t;
+    let at = 0, s = '';
+    for (const [r, n] of sg) { const piece = t.slice(at, at + n); at += n; s += cnOf(r) ? toCn(piece) : piece; }
+    return s + t.slice(at);
+  });
 }
 // 送給 App 的聲音配置：雲端、手機語音各一份（App 依當下用哪一種挑）
 const castPayload = () => castActive() ? { cloud: castConfig('cloud'), device: castConfig('device') } : null;
@@ -2903,10 +2950,10 @@ function speakNext(g, cont) {
   const gap = cont && T.s === 0 ? gapMs((R.pre && R.pre[T.b]) || 0) : 0;
   if (gap > 0) { setTimeout(() => speakNext(g), gap); return; }
   const c = T.chunks[T.s];
-  const u = new SpeechSynthesisUtterance(c.t);
   let v = currentVoice(), pitch = 1;
   // 對白：照「本機語音」那份聲音配置換聲音、音高（指定的聲音這台沒有就用旁白的）
   if (c.r) { const e = castConfig('device')[c.r]; if (e) { pitch = e.p; if (e.v) v = T.voices.find(x => x.voiceURI === e.v) || v; } }
+  const u = new SpeechSynthesisUtterance(v && voiceIsCn(v.voiceURI) ? toCn(c.t) : c.t);
   if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'zh-TW';
   u.rate = prefs.rate * cloudMul() * (head ? HEAD_RATE : 1); u.volume = prefs.volume; u.pitch = pitch;
   u.onend = () => { if (g !== T.gen) return; T.errs = 0; T.s++; speakNext(g, true); };
