@@ -286,6 +286,8 @@ body.ttsbar-on #reader.vert.with-player .rmain{padding-bottom:calc(230px + var(-
 body.ttsbar-on .pgnav{bottom:calc(16px + var(--ttsbar-h))}
 body.ttsbar-on #reader.vert .pgnav{bottom:calc(30px + var(--ttsbar-h))}
 #reader.with-player .pgnav{display:none}
+/* 閱讀設定「翻頁鈕：靠左／靠右」（Ken 2026-11-10 要求可切換）；靠右時讓開右邊的捲軸 */
+#reader.pg-right .pgnav{left:auto;right:24px}
 
 /* 目錄抽屜 */
 .scrim{position:fixed;inset:0;z-index:35;background:var(--scrim)}
@@ -509,6 +511,13 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
     <span>排版</span>
     <label class="switch" for="vertChk">直排（由右往左讀）<input type="checkbox" id="vertChk"></label>
   </div>
+  <div class="row">
+    <span>翻頁鈕</span>
+    <div class="seg" id="pgSideSeg">
+      <button type="button" data-v="left">靠左</button>
+      <button type="button" data-v="right">靠右</button>
+    </div>
+  </div>
 </section>
 
 <section class="player" id="player" hidden aria-label="朗讀">
@@ -588,7 +597,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.11.10.3';
+const WEB_VERSION = '2026.11.10.4';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -677,7 +686,7 @@ const FONTS = {
 };
 const WIDTHS = { s: '30em', m: '38em', l: '48em', xl: '60em' };
 const storedPrefs = LS.get('prefs', null);
-const prefs = Object.assign({ fs: matchMedia('(max-width: 600px)').matches ? 19 : 21, lh: 1.9, font: 'serif', theme: 'auto', width: 'm', indent: true, rate: 1, voice: '', cloudRate: 0.8, volume: 1, sleep: '0', sort: 'recent', tag: '', author: '', paren: 'gloss', view: 'grid', castOn: true, castVoices: null, vertical: false }, storedPrefs || {});
+const prefs = Object.assign({ fs: matchMedia('(max-width: 600px)').matches ? 19 : 21, lh: 1.9, font: 'serif', theme: 'auto', width: 'm', indent: true, rate: 1, voice: '', cloudRate: 0.8, volume: 1, sleep: '0', sort: 'recent', tag: '', author: '', paren: 'gloss', view: 'grid', castOn: true, castVoices: null, vertical: false, pgSide: 'left' }, storedPrefs || {});
 const savePrefs = () => LS.set('prefs', prefs);
 // 2026-10-30 對白換聲音改成男女老少各一個聲音（CAST_DEFAULT，Ken 指定照建議全換）：存過設定的裝置，雲端那份整份
 // 改回新預設（手機語音那份不動）；旁白若是雲澤紀錄片就換雲健紀錄片，雲澤讓給老男，不然老人講話跟旁白分不出來
@@ -782,6 +791,7 @@ pronounce:
 - **直排**：改成由上往下、由右往左的直式排版，左右滑動翻讀（電腦上滾輪一樣能捲）。
 - **字體**：明體、黑體、楷體。
 - **底色**：跟隨系統、白、米、綠、夜。
+- **翻頁鈕**：左下角（預設）或右下角。
 
 設定存在各自的裝置上：手機可以用大字、電腦用小字，互不影響。
 
@@ -789,7 +799,7 @@ pronounce:
 
 上方工具列固定在頂端，不會自動收起；書名兩側的 « » 是上一章／下一章。
 
-**翻頁鈕**：左下角兩顆小圓鈕，上面那顆往前翻一頁、下面那顆往後翻一頁（直排時左右排，左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
+**翻頁鈕**：左下角兩顆小圓鈕（閱讀設定的「翻頁鈕」可改成靠右），上面那顆往前翻一頁、下面那顆往後翻一頁（直排時左右排，左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
 
 **閱讀位置標記**：用手指滑、滾輪或翻頁捲過一段距離後，原本畫面最後一行（往回捲時是第一行）的位置會亮一條細線，幾秒後淡掉，眼睛照著它就找得回剛剛讀到哪裡。
 
@@ -2365,6 +2375,7 @@ function applyPrefs() {
   rd.style.setProperty('--measure', WIDTHS[prefs.width] || WIDTHS.m);
   rd.classList.toggle('indent', !!prefs.indent);
   rd.classList.toggle('vert', !!prefs.vertical);
+  rd.classList.toggle('pg-right', prefs.pgSide === 'right');
   if (R.view === 'reader' && prefs.theme !== 'auto') document.body.dataset.rtheme = prefs.theme;
   else delete document.body.dataset.rtheme;
   syncAa();
@@ -2377,6 +2388,7 @@ function syncAa() {
   $$('#themeSw .sw').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === prefs.theme)));
   $('#indentChk').checked = !!prefs.indent;
   $('#vertChk').checked = !!prefs.vertical;
+  $$('#pgSideSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === (prefs.pgSide === 'right' ? 'right' : 'left'))));
 }
 function setPref(k, v) {
   const keep = R.view === 'reader' ? (T.playing ? T.b : currentBlock()) : 0;
@@ -3168,6 +3180,7 @@ function wire() {
   $('#themeSw').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) setPref('theme', b.dataset.v); });
   $('#indentChk').addEventListener('change', e => setPref('indent', e.target.checked));
   $('#vertChk').addEventListener('change', e => setPref('vertical', e.target.checked));
+  $('#pgSideSeg').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) setPref('pgSide', b.dataset.v); });
 
   // 朗讀
   $('#pPlay').onclick = ttsToggle;
