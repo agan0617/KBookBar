@@ -275,12 +275,13 @@ body.ttsbar-on #reader.vert.with-player .rmain{padding-bottom:calc(230px + var(-
 #reader.vert .rscroll i{top:0;bottom:0;left:0;right:auto;width:8px;height:auto}
 #reader.vert .rscroll i::after{top:auto;left:0;right:0;bottom:0;width:auto;height:4px}
 
-/* 翻頁鈕（Ken 2026-11-10：點畫面翻頁太容易誤觸，改成左下角兩顆小圓鈕；同日從右下角移到左下角）。橫排上下疊：上一頁在上；
-   直排往左讀，改成左右排、箭頭轉 90°：下一頁在左。讓開直排底下的橫條捲軸、朗讀進度列；播放面板開著時收起來 */
-.pgnav{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:31;display:flex;flex-direction:column;gap:10px}
-.pgnav button{width:40px;height:40px;padding:0;border-radius:50%;border:1px solid var(--line);background:color-mix(in srgb,var(--raised) 82%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--muted);display:grid;place-items:center;box-shadow:0 2px 10px -4px rgba(0,0,0,.35);cursor:pointer;opacity:.85}
+/* 翻頁鈕（Ken 2026-11-10：點畫面翻頁太容易誤觸，改成左下角兩顆圓鈕；同日從右下角移到左下角，再放大成 80px、左右並排）。
+   橫排左右並排、上一頁在內側：靠左時上一頁在下一頁右邊，靠右時上一頁在下一頁左邊；
+   直排往左讀，箭頭轉 90°：下一頁在左。讓開直排底下的橫條捲軸、朗讀進度列；播放面板開著時收起來 */
+.pgnav{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:31;display:flex;flex-direction:row-reverse;gap:14px}
+.pgnav button{width:80px;height:80px;padding:0;border-radius:50%;border:1px solid var(--line);background:color-mix(in srgb,var(--raised) 82%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--muted);display:grid;place-items:center;box-shadow:0 2px 10px -4px rgba(0,0,0,.35);cursor:pointer;opacity:.85}
 .pgnav button:active{opacity:1;color:var(--ink)}
-.pgnav svg{width:20px;height:20px}
+.pgnav svg{width:40px;height:40px}
 #reader.vert .pgnav{flex-direction:row-reverse;bottom:calc(30px + env(safe-area-inset-bottom,0px))}
 #reader.vert .pgnav svg{transform:rotate(90deg)}
 body.ttsbar-on .pgnav{bottom:calc(16px + var(--ttsbar-h))}
@@ -288,6 +289,7 @@ body.ttsbar-on #reader.vert .pgnav{bottom:calc(30px + var(--ttsbar-h))}
 #reader.with-player .pgnav{display:none}
 /* 閱讀設定「翻頁鈕：靠左／靠右」（Ken 2026-11-10 要求可切換）；靠右時讓開右邊的捲軸 */
 #reader.pg-right .pgnav{left:auto;right:24px}
+#reader.pg-right:not(.vert) .pgnav{flex-direction:row}
 
 /* 目錄抽屜 */
 .scrim{position:fixed;inset:0;z-index:35;background:var(--scrim)}
@@ -598,7 +600,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.11.10.5';
+const WEB_VERSION = '2026.11.10.6';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -800,7 +802,7 @@ pronounce:
 
 上方工具列固定在頂端，不會自動收起；書名兩側的 « » 是上一章／下一章。
 
-**翻頁鈕**：左下角兩顆小圓鈕（閱讀設定的「翻頁鈕」可改成靠右），上面那顆往前翻一頁、下面那顆往後翻一頁（直排時左右排，左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
+**翻頁鈕**：左下角兩顆並排的大圓鈕（閱讀設定的「翻頁鈕」可改成靠右），↑ 往前翻一頁、↓ 往後翻一頁；靠左時 ↑ 在右邊、靠右時 ↑ 在左邊（直排時左邊那顆往後），翻頁時保留兩行，接著讀不跳行。點畫面不會翻頁；朗讀中點段落是跳到那段念。
 
 **閱讀位置標記**：用手指滑、滾輪或翻頁捲過一段距離後，原本畫面最後一行（往回捲時是第一行）的位置會亮一條細線，幾秒後淡掉，眼睛照著它就找得回剛剛讀到哪裡。
 
