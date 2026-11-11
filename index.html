@@ -366,6 +366,12 @@ input[type="range"]{width:100%;accent-color:var(--accent)}
 .ttsbar .vol svg{width:18px;height:18px}
 .ttsbar .vol input{width:84px}
 @media (max-width:400px){.ttsbar .vol input{width:60px}}
+/* 自動隱藏（Ken 2026-11-11）：念的時候 3 秒沒碰畫面就往下滑走，翻頁鈕跟著降回最底；碰畫面、滾輪、按鍵就回來。播放面板開著、拖進度時不藏 */
+.ttsbar{transition:transform .25s ease}
+body.ttsbar-hid .ttsbar{transform:translateY(100%)}
+.pgnav{transition:bottom .25s ease}
+body.ttsbar-on.ttsbar-hid .pgnav{bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+body.ttsbar-on.ttsbar-hid #reader.vert .pgnav{bottom:calc(30px + env(safe-area-inset-bottom,0px))}
 body.ttsbar-on .player{bottom:var(--ttsbar-h);padding-bottom:10px}
 body.ttsbar-on .rmain{padding-bottom:calc(64px + var(--ttsbar-h))}
 body.ttsbar-on #reader.with-player .rmain{padding-bottom:calc(230px + var(--ttsbar-h))}
@@ -606,7 +612,7 @@ body.ttsbar-on.player-open .toast{bottom:calc(150px + var(--ttsbar-h))}
 
 /* 網頁版本：每次改這個檔案推上去都要跟著改（年.月.日，同一天第二版起加 .2、.3）。
    書架最上面會顯示，「檢查更新」拿線上那份的這一行來比 */
-const WEB_VERSION = '2026.11.11.3';
+const WEB_VERSION = '2026.11.11.4';
 
 /* ───────── 小工具 ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -820,7 +826,7 @@ pronounce:
 ## 朗讀
 點右上角的**耳機**，會從畫面上的段落開始念；再點一次就停。只有開始／停止，不會跳出任何面板。念到哪一段會標出來並自動捲動，章尾接著念下一章。
 
-念的時候最下方會常駐一條**進度列**：中間是這一章的進度，拖到哪一段就從那一段接著念；右邊是音量；最左邊的**設定鈕**會叫出播放面板和朗讀設定（速度、語音、定時停止、上一段／下一段），再按一次就收起。停止朗讀時進度列跟著收起。
+念的時候最下方會出現一條**進度列**（3 秒沒碰畫面就自動往下藏起來，翻頁鈕跟著降下去；碰一下畫面、滾滾輪或按鍵就回來）：中間是這一章的進度，拖到哪一段就從那一段接著念；右邊是音量；最左邊的**設定鈕**會叫出播放面板和朗讀設定（速度、語音、定時停止、上一段／下一段），再按一次就收起。停止朗讀時進度列跟著收起。
 
 - **正在念的時候點任何一段**，就跳到那一段接著念；沒在念時點段落不會有反應，要開始念請點耳機。
 - 播放面板右邊的 **✕** 只是把面板收起來，朗讀會繼續；上方的耳機會亮著，點它就停，點進度列左邊的設定鈕再把面板叫出來。
@@ -3100,12 +3106,24 @@ function updatePlayer() {
   $('#pSub').textContent = sub;
   // 進度列：只在念的時候顯示；拖拉中不要把把手拉回去
   const on = T.playing && R.view === 'reader' && sp.length > 0;
+  const wasOn = document.body.classList.contains('ttsbar-on');
   $('#ttsBar').hidden = !on; document.body.classList.toggle('ttsbar-on', on);
+  if (on !== wasOn) ttsBarWake();
   if (on && !T.seeking) {
     const s = $('#seekRange');
     s.max = sp.length - 1; s.value = k;
     $('#seekPos').textContent = `${k + 1} / ${sp.length}`;
   }
+}
+// 進度列自動隱藏：叫一次就顯示並重新倒數 3 秒；播放面板開著或正在拖進度就再等一輪
+function ttsBarWake() {
+  const b = document.body;
+  b.classList.remove('ttsbar-hid'); clearTimeout(T.barIdle);
+  if (!b.classList.contains('ttsbar-on')) return;
+  T.barIdle = setTimeout(() => {
+    if (b.classList.contains('player-open') || T.seeking) ttsBarWake();
+    else if (b.classList.contains('ttsbar-on')) b.classList.add('ttsbar-hid');
+  }, 3000);
 }
 function setSleep(v) {
   clearTimeout(T.sleepTimer); clearInterval(T.tick); T.sleepTimer = null; T.sleepAt = 0; T.stopAtChEnd = false;
@@ -3243,6 +3261,8 @@ function wire() {
   $('#indentChk').addEventListener('change', e => setPref('indent', e.target.checked));
   $('#vertChk').addEventListener('change', e => setPref('vertical', e.target.checked));
   $('#pgSideSeg').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) setPref('pgSide', b.dataset.v); });
+  // 朗讀進度列：有動作就叫回來（不聽 scroll：朗讀會自己捲動跟著念的段落）
+  for (const ev of ['pointerdown', 'pointermove', 'wheel', 'keydown']) document.addEventListener(ev, () => { if (document.body.classList.contains('ttsbar-on')) ttsBarWake(); }, { capture: true, passive: true });
 
   // 朗讀
   $('#pPlay').onclick = ttsToggle;
